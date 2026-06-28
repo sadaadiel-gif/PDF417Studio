@@ -45,7 +45,7 @@ To the maximum extent permitted by applicable law, the developers, authors, and 
 PDF417Studio is proprietary software. All intellectual property rights, including the software, source code, executable binaries, user interface designs, documentation, assets, and layout structures, remain the exclusive property of the copyright owner. This software is not open source and is not intended for public resale, redistribution, or commercial sub-licensing unless explicitly authorized by a separate, signed agreement from the copyright owner.
 
 ## Trademark
-"PDF417Studio" is a trademark or product name of Allan Muya Wangechi. Unauthorized use of the name in connection with modified or redistributed versions of the software is prohibited without prior written permission.
+"PDF417Studio" is a trademark or product name of PDF417Studio. Unauthorized use of the name in connection with modified or redistributed versions of the software is prohibited without prior written permission.
 
 ## Support
 For technical inquiries, operational guidance, deployment assistance, or official licensing documentation, please contact the software author directly through the official communication channels designated by the copyright owner.
