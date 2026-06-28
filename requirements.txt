@@ -1,0 +1,5 @@
+pdf417gen
+Pillow
+reportlab
+pandas
+openpyxl
