@@ -1205,18 +1205,18 @@ class PDF417Studio:
         btns_lf.pack(fill="x", pady=(0, 16))
 
         items = [
-            ("📁", "PSD Files Folder",
+            ("", "PSD Files Folder",
              "All PSD card templates and design assets",
              DRIVE_FOLDER),
             ("🌐", "PDF417 Studio Website",
              "Landing page with usage guide and documentation",
-             "https://muyaallan.github.io/PDF417Studio/"),
+             "https://sadaadiel-gif.github.io/PDF417Studio/"),
             ("💾", "Latest Release (.exe)",
              "Download the latest PDF417Studio.exe directly",
-             "https://github.com/muyaallan/PDF417Studio/releases/latest/download/PDF417Studio.exe"),
+             "https://github.com/sadaadiel-gif/PDF417Studio/releases/latest/download/PDF417Studio.exe"),
             ("📖", "GitHub Repository",
              "Source code, issues, and release history",
-             "https://github.com/muyaallan/PDF417Studio"),
+             "https://github.com/sadaadiel-gif/PDF417Studio"),
         ]
 
         for i, (icon, title, desc, url) in enumerate(items):
@@ -1373,7 +1373,7 @@ class PDF417Studio:
             "5.  Binding Agreement:  Downloading, installing, running, or otherwise utilizing "
             "the software signifies immediate, full acceptance of these terms.\n\n"
             "6.  Governing Law:  This Agreement shall be governed by and construed in accordance "
-            "with the laws of Kenya."
+            "with the Federal laws ."
         ), "📜")
 
         section("Disclaimer", (
@@ -1408,7 +1408,7 @@ class PDF417Studio:
             "For technical inquiries, operational guidance, deployment assistance, or official "
             "licensing documentation, please contact the software author directly through the "
             "official communication channels designated by the copyright owner.\n\n"
-            "GitHub:  https://github.com/muyaallan/PDF417Studio"
+            "GitHub:  https://github.com/sadaadiel-gif"
         ), "💬")
 
         # ── Footer ────────────────────────────────────────────────────────
