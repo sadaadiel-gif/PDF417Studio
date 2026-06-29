@@ -1,13 +1,3 @@
-"""
-preview.py
-Tkinter widget that displays a Pillow image as a barcode preview.
-
-Handles the Pillow → ImageTk conversion that plain tk.PhotoImage cannot do,
-plus centering, a placeholder state, a save-to-PNG helper, and a
-save-to-PDF helper.  Canvas dimensions are imported from settings so that
-preview and exported PDFs are always the same size.
-"""
-
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from typing import Optional
@@ -18,49 +8,27 @@ from settings import PREVIEW_MAX_WIDTH, PREVIEW_MAX_HEIGHT
 
 
 class BarcodePreview(ttk.Frame):
-    """
-    A self-contained frame that shows a PDF417 barcode image.
 
-    Usage
-    -----
-        preview = BarcodePreview(parent)
-        preview.pack(fill="both", expand=True)
-
-        # Later, after generating a barcode:
-        preview.show(pil_image)
-
-        # To clear back to placeholder:
-        preview.clear()
-    """
-
-    # Placeholder appearance
     PLACEHOLDER_TEXT = "Barcode will appear here"
     PLACEHOLDER_BG   = "#f0f0f0"
     PLACEHOLDER_FG   = "#999999"
 
-    # Maximum display size — pulled from settings so exporter matches exactly
     MAX_WIDTH  = PREVIEW_MAX_WIDTH
     MAX_HEIGHT = PREVIEW_MAX_HEIGHT
 
     def __init__(self, parent, **kwargs):
         super().__init__(parent, **kwargs)
 
-        self._pil_image: Optional[Image.Image] = None   # current full-res image
-        self._tk_image:  Optional[ImageTk.PhotoImage] = None  # kept alive (no GC)
+        self._pil_image: Optional[Image.Image] = None
+        self._tk_image:  Optional[ImageTk.PhotoImage] = None
 
         self._build()
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def show(self, pil_image: Image.Image) -> None:
-        """Display *pil_image* scaled to fit the preview area."""
         self._pil_image = pil_image.copy()
 
         display = self._fit(pil_image, self.MAX_WIDTH, self.MAX_HEIGHT)
 
-        # ImageTk.PhotoImage must stay referenced or it gets garbage-collected
         self._tk_image = ImageTk.PhotoImage(display)
 
         self._canvas.config(
@@ -84,7 +52,6 @@ class BarcodePreview(ttk.Frame):
         )
 
     def clear(self) -> None:
-        """Reset to placeholder state."""
         self._pil_image = None
         self._tk_image  = None
         self._canvas.delete("all")
@@ -105,7 +72,6 @@ class BarcodePreview(ttk.Frame):
         self._status_var.set("")
 
     def save_image(self) -> None:
-        """Open a file-save dialog and write the current image to disk as PNG/JPG/BMP."""
         if self._pil_image is None:
             messagebox.showwarning("No image", "Generate a barcode first.")
             return
@@ -121,7 +87,7 @@ class BarcodePreview(ttk.Frame):
             title="Save barcode image",
         )
         if not path:
-            return  # user cancelled
+            return
 
         try:
             self._pil_image.save(path)
@@ -130,7 +96,6 @@ class BarcodePreview(ttk.Frame):
             messagebox.showerror("Save failed", str(exc))
 
     def save_pdf(self) -> None:
-        """Export the current barcode as a single-page PDF."""
         if self._pil_image is None:
             messagebox.showwarning("No image", "Generate a barcode first.")
             return
@@ -144,7 +109,7 @@ class BarcodePreview(ttk.Frame):
             title="Export barcode as PDF",
         )
         if not path:
-            return  # user cancelled
+            return
 
         try:
             from exporter import export_pdf
@@ -153,13 +118,7 @@ class BarcodePreview(ttk.Frame):
         except Exception as exc:
             messagebox.showerror("PDF export failed", str(exc))
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _build(self) -> None:
-        """Construct child widgets."""
-        # Canvas — holds the barcode image (or placeholder text)
         self._canvas = tk.Canvas(
             self,
             width=self.MAX_WIDTH,
@@ -170,7 +129,6 @@ class BarcodePreview(ttk.Frame):
         )
         self._canvas.pack(pady=(0, 6))
 
-        # Bottom row: status label + action buttons
         bottom = ttk.Frame(self)
         bottom.pack(fill="x")
 
@@ -194,15 +152,10 @@ class BarcodePreview(ttk.Frame):
         )
         self._save_img_btn.pack(side="right")
 
-        # Draw initial placeholder
         self.clear()
 
     @staticmethod
     def _fit(image: Image.Image, max_w: int, max_h: int) -> Image.Image:
-        """
-        Return a copy of *image* scaled down (NEAREST) so it fits within
-        *max_w* × *max_h*.  Never scales up.
-        """
         w, h = image.size
         if w <= max_w and h <= max_h:
             return image.copy()

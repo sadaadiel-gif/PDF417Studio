@@ -1,8 +1,3 @@
-"""
-PDF417 Studio
-Main Entry Point
-"""
-
 from gui import PDF417Studio
 
 
