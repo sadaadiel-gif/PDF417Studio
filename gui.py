@@ -5,13 +5,11 @@ PDF417 Studio — main window.
 Tabs
 ----
   Information  — AAMVA field entry + output text
-  PDF417       — barcode settings + preview
-  Code 128     — Code 128 generator + preview
-  Scanner      — paste / load raw barcode text and parse AAMVA fields back
+  PDF417       — barcode settings (bar height, narrow bar width,
+                 column count, row count, DPI, …) + preview
+  Code128      — simple Code 128 generator + preview
 """
 
-import os
-import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from datetime import datetime
@@ -20,9 +18,6 @@ from aamva import AAMVAData, AAMVABuilder
 from barcode import generate_barcode, generate_code128, pdf417_row_count
 from preview import BarcodePreview
 from exporter import export_pdf, save_png
-from mrz_engine import default_pipeline, default_td3_pipeline, default_universal_pipeline, MRZTransliterator
-from models import RawTD1Document, RawTD2Document, RawTD3Document
-from exceptions import MRZError
 from settings import (
     DEFAULT_COLUMNS, DEFAULT_SCALE, WINDOW_TITLE,
     AAMVA_MAX_WIDTH_MM, AAMVA_MAX_HEIGHT_MM,
@@ -34,109 +29,17 @@ _SEX_OPTIONS = ["1 – M", "2 – F", "9 – X"]
 _SEX_WIRE    = {"1 – M": "1", "2 – F": "2", "9 – X": "9"}
 
 _STATE_IIN = {
-    # ── US States ────────────────────────────────────────────────────────────
-    "VA": "636000",   # Virginia
-    "NY": "636001",   # New York
-    "MA": "636002",   # Massachusetts
-    "MD": "636003",   # Maryland
-    "NC": "636004",   # North Carolina
-    "SC": "636005",   # South Carolina
-    "CT": "636006",   # Connecticut
-    "LA": "636007",   # Louisiana
-    "MT": "636008",   # Montana
-    "NM": "636009",   # New Mexico  (some sources 636013 — using official AAMVA value)
-    "FL": "636010",   # Florida
-    "DE": "636011",   # Delaware
-    "CA": "636014",   # California
-    "TX": "636015",   # Texas
-    "IA": "636018",   # Iowa
-    "CO": "636020",   # Colorado
-    "AR": "636021",   # Arkansas
-    "KS": "636022",   # Kansas
-    "OH": "636023",   # Ohio
-    "VT": "636024",   # Vermont
-    "PA": "636025",   # Pennsylvania
-    "AZ": "636026",   # Arizona
-    "OR": "636029",   # Oregon
-    "MO": "636030",   # Missouri
-    "WI": "636031",   # Wisconsin
-    "MI": "636032",   # Michigan
-    "AL": "636033",   # Alabama
-    "IL": "636035",   # Illinois
-    "NJ": "636036",   # New Jersey
-    "IN": "636037",   # Indiana
-    "MN": "636038",   # Minnesota
-    "NH": "636039",   # New Hampshire
-    "UT": "636040",   # Utah
-    "ME": "636041",   # Maine
-    "SD": "636042",   # South Dakota
-    "DC": "636043",   # District of Columbia
-    "WA": "636045",   # Washington
-    "KY": "636046",   # Kentucky
-    "HI": "636047",   # Hawaii
-    "NV": "636049",   # Nevada
-    "ID": "636050",   # Idaho
-    "MS": "636051",   # Mississippi
-    "RI": "636052",   # Rhode Island
-    "TN": "636053",   # Tennessee
-    "NE": "636054",   # Nebraska
-    "GA": "636055",   # Georgia
-    "OK": "636058",   # Oklahoma
-    "AK": "636059",   # Alaska
-    "WY": "636060",   # Wyoming
-    "WV": "636061",   # West Virginia
-    "VI": "636062",   # U.S. Virgin Islands
-    # States not yet in the official AAMVA published list (placeholder)
-    "ND": "636034",   # North Dakota
-    "WY": "636060",   # Wyoming (duplicate safety)
-}
-
-# Reverse IIN → state name for scanner display
-_IIN_STATE = {v: k for k, v in _STATE_IIN.items()}
-
-# All known AAMVA DL element tags → human label
-_AAMVA_TAGS = {
-    "DAQ": "License Number",
-    "DCS": "Last Name",
-    "DAC": "First Name",
-    "DBC": "First Name / Sex",
-    "DAD": "Middle Name",
-    "DBB": "Date of Birth",
-    "DBA": "Expiry Date",
-    "DBD": "Issue Date",
-    "DBC": "Sex",
-    "DAG": "Address",
-    "DAI": "City",
-    "DAJ": "State",
-    "DAK": "ZIP Code",
-    "DAU": "Height",
-    "DAY": "Eye Colour",
-    "DAB": "Hair Colour",
-    "DCA": "License Class",
-    "DAW": "Weight",
-    "DCF": "Document Discriminator",
-    "DCG": "Country",
-    "DDA": "Compliance Type",
-    "DDK": "Donor",
-    "DDB": "Card Revision Date",
-    "DAT": "Endorsement",
-    "DCK": "Inventory",
-    "DAR": "Restriction",
-    "DCL": "Race / Ethnicity",
-    "DCJ": "Audit Information",
-    "DAR": "Restrictions",
-    "DAE": "Name Suffix",
-    "DAF": "Name Prefix",
-    "DBF": "Alias Last Name",
-    "DBG": "Alias First Name",
-    "DBI": "Alias Middle Name",
-    "DCB": "Restriction Code",
-    "DCC": "Endorsement Code",
-    "DCD": "Status Code",
-    "DCE": "Weight Range",
-    "DCH": "Federal Commercial Vehicle Code",
-    "DCI": "Place of Birth",
-    "DCM": "Standard Vehicle Code",
+    "AL":"636033","AK":"636059","AZ":"636026","AR":"636021","CA":"636014",
+    "CO":"636020","CT":"636006","DE":"636011","FL":"636010","GA":"636055",
+    "HI":"636047","ID":"636050","IL":"636035","IN":"636037","IA":"636018",
+    "KS":"636022","KY":"636046","LA":"636007","ME":"636041","MD":"636003",
+    "MA":"636002","MI":"636032","MN":"636038","MS":"636051","MO":"636030",
+    "MT":"636008","NE":"636054","NV":"636049","NH":"636039","NJ":"636036",
+    "NM":"636013","NY":"636001","NC":"636004","ND":"636034","OH":"636023",
+    "OK":"636058","OR":"636029","PA":"636025","RI":"636052","SC":"636005",
+    "SD":"636042","TN":"636053","TX":"636015","UT":"636040","VT":"636024",
+    "VA":"636000","WA":"636045","WV":"636061","WI":"636031","WY":"636060",
+    "DC":"636043",
 }
 
 
@@ -158,17 +61,6 @@ def _spin(parent, var, from_, to, width=5):
                       width=width, increment=1)
 
 
-def _resource(filename: str) -> str:
-    """Return absolute path to a bundled resource (works frozen + dev)."""
-    if getattr(sys, "frozen", False):
-        # PyInstaller bundles everything flat into _MEIPASS
-        base = sys._MEIPASS
-    else:
-        # Running from source — assets live in the assets/ subfolder
-        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-    return os.path.join(base, filename)
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 
 class PDF417Studio:
@@ -178,89 +70,30 @@ class PDF417Studio:
         self.root.geometry("980x720")
         self.root.resizable(True, True)
 
-        self._set_icons()
-
         self._opt_vars: dict[str, tk.BooleanVar] = {}
+
         self._build_ui()
-
-    # ── icon / logo ──────────────────────────────────────────────────────────
-
-    def _set_icons(self):
-        """
-        Set the window icon (titlebar + taskbar) and embed the logo in the
-        top toolbar strip.
-
-        Works in three environments:
-          • Windows .exe (PyInstaller): iconbitmap via .ico
-          • Windows dev:               iconbitmap via .ico
-          • Linux / macOS dev:         iconphoto via .png (no .ico support)
-        """
-        from PIL import Image, ImageTk
-
-        # ── taskbar / titlebar icon ──────────────────────────────────────
-        ico_path = _resource("app.ico")
-        png_path = _resource("logo.png")
-
-        try:
-            if sys.platform == "win32" and os.path.exists(ico_path):
-                self.root.iconbitmap(ico_path)
-            elif os.path.exists(png_path):
-                img = Image.open(png_path).resize((64, 64), Image.LANCZOS)
-                self._icon_img = ImageTk.PhotoImage(img)
-                self.root.iconphoto(True, self._icon_img)
-        except Exception:
-            pass   # silently ignore if icon files are missing
-
-        # ── toolbar logo strip ───────────────────────────────────────────
-        if os.path.exists(png_path):
-            try:
-                logo_img = Image.open(png_path).resize((36, 36), Image.LANCZOS)
-                self._logo_tk = ImageTk.PhotoImage(logo_img)
-
-                toolbar = tk.Frame(self.root, bg="#1a1a2e", height=46)
-                toolbar.pack(fill="x", side="top")
-                toolbar.pack_propagate(False)
-
-                tk.Label(toolbar, image=self._logo_tk,
-                         bg="#1a1a2e").pack(side="left", padx=(8, 4), pady=5)
-                tk.Label(toolbar, text="PDF417 Studio",
-                         bg="#1a1a2e", fg="white",
-                         font=("Helvetica", 14, "bold")).pack(side="left", pady=5)
-            except Exception:
-                pass
-
-    # ── top-level UI ─────────────────────────────────────────────────────────
 
     def run(self):
         self.root.mainloop()
+
+    # ═══════════════════════════════════════════════════════════ top-level UI
 
     def _build_ui(self):
         self.nb = ttk.Notebook(self.root)
         self.nb.pack(fill="both", expand=True, padx=4, pady=4)
 
-        self.tab_info      = ttk.Frame(self.nb)
-        self.tab_pdf417    = ttk.Frame(self.nb)
-        self.tab_code128   = ttk.Frame(self.nb)
-        self.tab_scanner   = ttk.Frame(self.nb)
-        self.tab_mrz       = ttk.Frame(self.nb)
-        self.tab_downloads = ttk.Frame(self.nb)
-        self.tab_security  = ttk.Frame(self.nb)
+        self.tab_info    = ttk.Frame(self.nb)
+        self.tab_pdf417  = ttk.Frame(self.nb)
+        self.tab_code128 = ttk.Frame(self.nb)
 
-        self.nb.add(self.tab_info,      text="Information")
-        self.nb.add(self.tab_pdf417,    text="PDF417")
-        self.nb.add(self.tab_code128,   text="Code 128")
-        self.nb.add(self.tab_scanner,   text="🔍 Scanner")
-        self.nb.add(self.tab_mrz,       text="🪪 MRZ")
-        self.nb.add(self.tab_downloads, text="⬇ Downloads")
-        self.nb.add(self.tab_security,  text="🔒 Security")
+        self.nb.add(self.tab_info,    text="Information")
+        self.nb.add(self.tab_pdf417,  text="PDF417")
+        self.nb.add(self.tab_code128, text="Code 128")
 
         self._build_information_tab()
         self._build_pdf417_tab()
         self._build_code128_tab()
-        self._build_scanner_tab()
-        self._build_mrz_tab()
-        self._build_downloads_tab()
-        self._build_security_tab()
 
     # ═══════════════════════════════════════════════ Tab 1 — Information
 
@@ -280,47 +113,23 @@ class PDF417Studio:
         lf.pack(side="left", fill="both", expand=True, padx=(0, 6))
         g = lf
 
-        _lbl(g, "IIN  (State)").grid(row=0, column=0, sticky="w")
+        _lbl(g, "IIN").grid(row=0, column=0, sticky="w")
         _lbl(g, "Ver").grid(row=0, column=1, sticky="w", padx=(6,0))
         _lbl(g, "Jur").grid(row=0, column=2, sticky="w", padx=(6,0))
         _lbl(g, "Subfile Len").grid(row=0, column=3, sticky="w", padx=(6,0))
         _lbl(g, "First Tag").grid(row=0, column=4, sticky="w", padx=(6,0))
 
-        # IIN dropdown — sorted by state abbreviation, shows "636025 — PA"
-        _IIN_OPTIONS = sorted(
-            [f"{iin}  —  {state}" for state, iin in _STATE_IIN.items()],
-            key=lambda x: x.split("—")[1].strip()
-        )
-        self._iin_var = tk.StringVar(value="636000  —  VA")
-        self.issuer_id_combo = ttk.Combobox(
-            g, textvariable=self._iin_var,
-            values=_IIN_OPTIONS, width=16, state="normal"
-        )
-        self.issuer_id_combo.grid(row=1, column=0, sticky="ew")
-        self._iin_var.trace_add("write", self._on_iin_change)
-
-        # Keep a plain entry reference for aamva builder (holds just the 6-digit IIN)
-        self.issuer_id = self.issuer_id_combo   # alias so _collect_fields still works
+        self.issuer_id = _entry(g, width=8)
+        self.issuer_id.insert(0, "636000")
+        self.issuer_id.grid(row=1, column=0, sticky="ew")
         self.version = _entry(g, width=4)
         self.version.insert(0, "01")
         self.version.grid(row=1, column=1, sticky="ew", padx=(6,0))
         self.jurisdiction = _entry(g, width=4)
         self.jurisdiction.insert(0, "01")
         self.jurisdiction.grid(row=1, column=2, sticky="ew", padx=(6,0))
-        self.subfile_length_var = tk.StringVar(value="0278")
-        self.subfile_length = ttk.Combobox(
-            g, textvariable=self.subfile_length_var,
-            values=[
-                "0278",   # PA, most common
-                "0256",   # VA, NC, SC
-                "0300",   # CA, TX, FL
-                "0320",   # NY, IL
-                "0350",   # GA, OH, MI
-                "0400",   # WA, OR
-                "0200",   # minimal / test
-            ],
-            width=6, state="normal"
-        )
+        self.subfile_length = _entry(g, width=6)
+        self.subfile_length.insert(0, "0278")
         self.subfile_length.grid(row=1, column=3, sticky="ew", padx=(6,0))
         self.first_tag_var = tk.StringVar(value="DAC")
         _combo(g, self.first_tag_var, ["DAC", "DBC"], width=5).grid(
@@ -449,6 +258,7 @@ class PDF417Studio:
         top = ttk.Frame(root)
         top.pack(fill="x")
 
+        # ── Output mirror (left) ──────────────────────────────────────────
         out_lf = ttk.LabelFrame(top, text="Output", padding=8)
         out_lf.pack(side="left", fill="both", expand=True, padx=(0, 6))
 
@@ -463,9 +273,11 @@ class PDF417Studio:
         ttk.Button(btn2, text="Generate", command=self.generate_aamva).pack(side="left", padx=(0,4))
         ttk.Button(btn2, text="Copy",     command=self.copy_output).pack(side="left")
 
+        # ── Barcode settings (right) ──────────────────────────────────────
         bc_lf = ttk.LabelFrame(top, text="Barcode  [AAMVA DL/ID Standard]", padding=8)
         bc_lf.pack(side="left", fill="y")
 
+        # Row 0: Bar Height | Narrow Bar Width
         _lbl(bc_lf, "Bar Height").grid(row=0, column=0, sticky="w", pady=1)
         self.bar_height_var = tk.IntVar(value=3)
         _spin(bc_lf, self.bar_height_var, 1, 20, width=4).grid(row=0, column=1, padx=(6,0), sticky="w")
@@ -474,15 +286,18 @@ class PDF417Studio:
         self.narrow_bar_var = tk.IntVar(value=3)
         _spin(bc_lf, self.narrow_bar_var, 1, 10, width=4).grid(row=0, column=3, padx=(6,0), sticky="w")
 
+        # Row 1: Column Count | Row Count
         _lbl(bc_lf, "Column Count").grid(row=1, column=0, sticky="w", pady=1)
         self.col_count = tk.IntVar(value=DEFAULT_COLUMNS)
         _spin(bc_lf, self.col_count, 1, 30, width=4).grid(row=1, column=1, padx=(6,0), sticky="w")
 
         _lbl(bc_lf, "Row Count").grid(row=1, column=2, sticky="w", padx=(14,0), pady=1)
         self.row_count_var = tk.IntVar(value=0)
-        _spin(bc_lf, self.row_count_var, 0, 90, width=4).grid(row=1, column=3, padx=(6,0), sticky="w")
+        row_spin = _spin(bc_lf, self.row_count_var, 0, 90, width=4)
+        row_spin.grid(row=1, column=3, padx=(6,0), sticky="w")
         _lbl(bc_lf, "(0 = auto)").grid(row=1, column=4, sticky="w", padx=(4,0), pady=1)
 
+        # Row 2: DPI | X-Dim
         _lbl(bc_lf, "DPI").grid(row=2, column=0, sticky="w", pady=1)
         self.dpi_var = tk.StringVar(value="300")
         _combo(bc_lf, self.dpi_var, ["150","200","300","600","1200"],
@@ -492,6 +307,7 @@ class PDF417Studio:
         self.x_mils = tk.DoubleVar(value=10.0)
         _entry(bc_lf, var=self.x_mils, width=6).grid(row=2, column=3, padx=(6,0), sticky="w")
 
+        # Row 3: Y Ratio | Quiet Zone
         _lbl(bc_lf, "Y Ratio (≥3)").grid(row=3, column=0, sticky="w", pady=1)
         self.y_ratio = tk.IntVar(value=3)
         _spin(bc_lf, self.y_ratio, 3, 20, width=4).grid(row=3, column=1, padx=(6,0), sticky="w")
@@ -500,6 +316,7 @@ class PDF417Studio:
         self.quiet_zone = tk.IntVar(value=AAMVA_QUIET_ZONE_REC)
         _spin(bc_lf, self.quiet_zone, 1, 10, width=4).grid(row=3, column=3, padx=(6,0), sticky="w")
 
+        # Row 4: Error Level
         _lbl(bc_lf, "Error Correction Level").grid(row=4, column=0, sticky="w", pady=1)
         self.ecl_var = tk.StringVar(value="Level 5")
         _combo(bc_lf, self.ecl_var,
@@ -507,17 +324,23 @@ class PDF417Studio:
                 "Level 4","Level 5","Level 6","Level 7","Level 8"],
                width=9).grid(row=4, column=1, columnspan=2, padx=(6,0), sticky="w")
 
+        # Row 5: action buttons
         btn_row = ttk.Frame(bc_lf)
         btn_row.grid(row=5, column=0, columnspan=5, pady=(10,0), sticky="ew")
-        ttk.Button(btn_row, text="AAMVA Preset",    command=self._apply_aamva_preset).pack(side="left", padx=(0,4))
-        ttk.Button(btn_row, text="Generate Barcode", command=self.generate_barcode).pack(side="left", padx=(0,4))
-        ttk.Button(btn_row, text="Save Barcode",     command=self.save_barcode_png).pack(side="left")
+        ttk.Button(btn_row, text="AAMVA Preset",
+                   command=self._apply_aamva_preset).pack(side="left", padx=(0,4))
+        ttk.Button(btn_row, text="Generate Barcode",
+                   command=self.generate_barcode).pack(side="left", padx=(0,4))
+        ttk.Button(btn_row, text="Save Barcode",
+                   command=self.save_barcode_png).pack(side="left")
 
+        # Row 6: physical size readout
         self._phys_var = tk.StringVar(value="")
         ttk.Label(bc_lf, textvariable=self._phys_var,
                   font=("Courier", 8), foreground="#333").grid(
             row=6, column=0, columnspan=5, pady=(6,0), sticky="w")
 
+        # ── Preview ───────────────────────────────────────────────────────
         prev_lf = ttk.LabelFrame(root, text="Preview", padding=8)
         prev_lf.pack(fill="both", expand=True, pady=(8,0))
 
@@ -530,14 +353,17 @@ class PDF417Studio:
         root = ttk.Frame(self.tab_code128, padding=10)
         root.pack(fill="both", expand=True)
 
+        # ── Settings ─────────────────────────────────────────────────────
         cfg_lf = ttk.LabelFrame(root, text="Code 128 Settings", padding=8)
         cfg_lf.pack(fill="x")
 
+        # Text input
         _lbl(cfg_lf, "Text / Data").grid(row=0, column=0, sticky="w")
         self.c128_text_var = tk.StringVar()
         _entry(cfg_lf, var=self.c128_text_var, width=40).grid(
             row=0, column=1, columnspan=5, sticky="ew", padx=(6,0))
 
+        # Bar Width | Bar Height | DPI
         _lbl(cfg_lf, "Narrow Bar Width (mm)").grid(row=1, column=0, sticky="w", pady=(8,0))
         self.c128_bar_width = tk.DoubleVar(value=0.35)
         _entry(cfg_lf, var=self.c128_bar_width, width=6).grid(
@@ -555,342 +381,31 @@ class PDF417Studio:
 
         cfg_lf.columnconfigure(1, weight=1)
 
+        # Buttons
         btn_row = ttk.Frame(root)
         btn_row.pack(fill="x", pady=(8,0))
-        ttk.Button(btn_row, text="Generate Code 128", command=self.generate_code128_barcode).pack(side="left", padx=(0,6))
-        ttk.Button(btn_row, text="Save Image…",        command=self._save_c128_image).pack(side="left", padx=(0,6))
-        ttk.Button(btn_row, text="Download PDF…",      command=self._save_c128_pdf).pack(side="left")
+        ttk.Button(btn_row, text="Generate Code 128",
+                   command=self.generate_code128_barcode).pack(side="left", padx=(0,6))
+        ttk.Button(btn_row, text="Save Image…",
+                   command=self._save_c128_image).pack(side="left", padx=(0,6))
+        ttk.Button(btn_row, text="Download PDF…",
+                   command=self._save_c128_pdf).pack(side="left")
 
+        # Status
         self._c128_status = tk.StringVar()
         ttk.Label(root, textvariable=self._c128_status,
                   font=("Courier", 8), foreground="#333").pack(anchor="w", pady=(4,0))
 
+        # Preview
         prev_lf = ttk.LabelFrame(root, text="Preview", padding=8)
         prev_lf.pack(fill="both", expand=True, pady=(8,0))
 
         self.preview_c128 = BarcodePreview(prev_lf)
         self.preview_c128.pack(fill="both", expand=True)
 
-    # ═══════════════════════════════════════════════ Tab 4 — Scanner
-
-    def _build_scanner_tab(self):
-        """
-        Scanner tab: paste raw barcode text (from a USB wedge or manual entry),
-        parse all AAMVA tags and display them in a structured table.
-        Offers a 'Send to Information Tab' button to pre-fill the form.
-        """
-        root = ttk.Frame(self.tab_scanner, padding=10)
-        root.pack(fill="both", expand=True)
-
-        # ── Input area ────────────────────────────────────────────────────
-        in_lf = ttk.LabelFrame(root, text="Raw Barcode Input", padding=8)
-        in_lf.pack(fill="x")
-
-        hint = (
-            "Paste scanned barcode text here  (from a USB barcode wedge scanner,\n"
-            "or copy from the Output box on the Information / PDF417 tab)."
-        )
-        _lbl(in_lf, hint, foreground="#555").pack(anchor="w", pady=(0,4))
-
-        input_frame = ttk.Frame(in_lf)
-        input_frame.pack(fill="x")
-
-        self.scanner_input = tk.Text(input_frame, height=5,
-                                     font=("Courier", 9), wrap="none")
-        sb_scan_y = ttk.Scrollbar(input_frame, orient="vertical",
-                                  command=self.scanner_input.yview)
-        sb_scan_x = ttk.Scrollbar(input_frame, orient="horizontal",
-                                  command=self.scanner_input.xview)
-        self.scanner_input.configure(yscrollcommand=sb_scan_y.set,
-                                     xscrollcommand=sb_scan_x.set)
-        sb_scan_y.pack(side="right", fill="y")
-        sb_scan_x.pack(side="bottom", fill="x")
-        self.scanner_input.pack(fill="x", expand=True)
-
-        btn_row = ttk.Frame(in_lf)
-        btn_row.pack(fill="x", pady=(6,0))
-        ttk.Button(btn_row, text="▶  Parse",
-                   command=self._scanner_parse).pack(side="left", padx=(0,6))
-        ttk.Button(btn_row, text="Load from Output tab",
-                   command=self._scanner_load_from_output).pack(side="left", padx=(0,6))
-        ttk.Button(btn_row, text="Clear",
-                   command=self._scanner_clear).pack(side="left", padx=(0,6))
-        ttk.Button(btn_row, text="⇢  Send to Information Tab",
-                   command=self._scanner_send_to_info).pack(side="right")
-
-        # ── Status bar ────────────────────────────────────────────────────
-        self._scan_status = tk.StringVar(value="Waiting for input…")
-        ttk.Label(root, textvariable=self._scan_status,
-                  font=("Helvetica", 9, "italic"),
-                  foreground="#444").pack(anchor="w", pady=(6,2))
-
-        # ── Parsed fields table ───────────────────────────────────────────
-        tbl_lf = ttk.LabelFrame(root, text="Parsed Fields", padding=8)
-        tbl_lf.pack(fill="both", expand=True, pady=(4,0))
-
-        cols = ("tag", "field", "value")
-        self._scan_tree = ttk.Treeview(tbl_lf, columns=cols,
-                                       show="headings", selectmode="browse")
-        self._scan_tree.heading("tag",   text="Tag")
-        self._scan_tree.heading("field", text="Field Name")
-        self._scan_tree.heading("value", text="Value")
-        self._scan_tree.column("tag",   width=55,  stretch=False)
-        self._scan_tree.column("field", width=200, stretch=False)
-        self._scan_tree.column("value", width=400, stretch=True)
-
-        tree_sb_y = ttk.Scrollbar(tbl_lf, orient="vertical",
-                                  command=self._scan_tree.yview)
-        self._scan_tree.configure(yscrollcommand=tree_sb_y.set)
-        tree_sb_y.pack(side="right", fill="y")
-        self._scan_tree.pack(fill="both", expand=True)
-
-        # Alternating row colours
-        self._scan_tree.tag_configure("odd",  background="#f7f9fc")
-        self._scan_tree.tag_configure("even", background="#ffffff")
-        self._scan_tree.tag_configure("hdr",  background="#dce8f5",
-                                              font=("Helvetica", 9, "bold"))
-
-        # ── Decoded summary card ──────────────────────────────────────────
-        summary_lf = ttk.LabelFrame(root, text="Summary", padding=8)
-        summary_lf.pack(fill="x", pady=(8,0))
-
-        self._scan_summary = tk.StringVar(value="")
-        ttk.Label(summary_lf, textvariable=self._scan_summary,
-                  font=("Helvetica", 10), justify="left").pack(anchor="w")
-
-        # Internal store of last parsed data
-        self._last_scan: dict[str, str] = {}
-
-    # ── Scanner helpers ───────────────────────────────────────────────────────
-
-    def _scanner_parse(self):
-        """Parse the raw text and populate the treeview."""
-        raw = self.scanner_input.get("1.0", "end").strip()
-        if not raw:
-            self._scan_status.set("⚠  Nothing to parse.")
-            return
-
-        fields, header_info, errors = self._parse_aamva(raw)
-        self._last_scan = fields
-
-        # Clear tree
-        for row in self._scan_tree.get_children():
-            self._scan_tree.delete(row)
-
-        if header_info:
-            self._scan_tree.insert("", "end",
-                values=("—", "── Header ──", header_info),
-                tags=("hdr",))
-
-        parity = 0
-        for tag, value in fields.items():
-            label = _AAMVA_TAGS.get(tag, f"Unknown ({tag})")
-            tag_str = ("odd", "even")[parity % 2]
-            self._scan_tree.insert("", "end",
-                values=(tag, label, value.strip()),
-                tags=(tag_str,))
-            parity += 1
-
-        if errors:
-            for err in errors:
-                self._scan_tree.insert("", "end",
-                    values=("ERR", "Parse Warning", err),
-                    tags=("hdr",))
-
-        count = len(fields)
-        self._scan_status.set(
-            f"✓  Parsed {count} field{'s' if count != 1 else ''}"
-            + (f"  ·  {len(errors)} warning(s)" if errors else "")
-        )
-        self._update_scan_summary(fields)
-
-    def _parse_aamva(self, raw: str) -> tuple[dict, str, list]:
-        """
-        Parse a raw AAMVA barcode string into a dict of {tag: value}.
-
-        Returns (fields_dict, header_summary_str, warnings_list).
-        """
-        fields: dict[str, str] = {}
-        errors: list[str] = []
-        header_info = ""
-
-        lines = raw.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if not line:
-                continue
-
-            # First line: "@"
-            if line == "@":
-                continue
-
-            # Header line: starts with "ANSI "
-            if line.startswith("ANSI "):
-                try:
-                    iin  = line[5:11]
-                    ver  = line[11:13]
-                    jur  = line[13:15]
-                    # The rest of the header line may contain the first DAQ
-                    # element embedded — extract it
-                    dl_idx = line.find("DLDAQ", 15)
-                    if dl_idx != -1:
-                        daq_val = line[dl_idx+5:]
-                        fields["DAQ"] = daq_val
-                    state_name = _IIN_STATE.get(iin, "Unknown")
-                    header_info = (f"IIN={iin} ({state_name})  "
-                                   f"Ver={ver}  Jur={jur}")
-                except Exception as exc:
-                    errors.append(f"Header parse error: {exc}")
-                continue
-
-            # Data lines: first 3 chars = tag
-            if len(line) >= 3:
-                tag = line[:3]
-                val = line[3:]
-
-                # Guard: skip non-alpha tags (header cruft)
-                if not tag.isalpha():
-                    continue
-
-                # DBC can appear twice (first name + sex); handle gracefully
-                if tag == "DBC" and "DBC" in fields:
-                    # Second DBC is sex
-                    fields["DBC_SEX"] = val
-                else:
-                    fields[tag] = val
-
-        if not fields:
-            errors.append("No AAMVA data elements found. Is this a valid barcode string?")
-
-        return fields, header_info, errors
-
-    def _update_scan_summary(self, fields: dict):
-        """Build and display a human-readable card summary."""
-        def g(tag, alt=""):
-            return fields.get(tag, alt).strip()
-
-        first = g("DAC") or g("DBC")
-        last  = g("DCS")
-        mid   = g("DAD")
-        name  = " ".join(p for p in [first, mid, last] if p) or "—"
-
-        dob  = g("DBB")
-        exp  = g("DBA")
-        sex_raw = g("DBC_SEX") or g("DBC")
-        sex  = {"1": "Male", "2": "Female", "9": "Non-binary / X"}.get(sex_raw, sex_raw)
-
-        lic  = g("DAQ")
-        cls  = g("DCA")
-        addr = g("DAG")
-        city = g("DAI")
-        st   = g("DAJ")
-        zipc = g("DAK")
-
-        lines = [
-            f"Name:          {name}",
-            f"Date of Birth: {dob}       Sex: {sex}",
-            f"License #:     {lic}       Class: {cls}",
-            f"Address:       {addr}, {city}, {st}  {zipc}",
-            f"Expiry:        {exp}",
-        ]
-        self._scan_summary.set("\n".join(lines))
-
-    def _scanner_load_from_output(self):
-        """Copy the AAMVA text from the Information tab output box."""
-        text = self.output.get("1.0", "end").strip()
-        if not text:
-            messagebox.showwarning("Nothing to load",
-                                   "Generate AAMVA data on the Information tab first.")
-            return
-        self.scanner_input.delete("1.0", "end")
-        self.scanner_input.insert("1.0", text)
-        self._scan_status.set("Loaded from Information tab output — click Parse.")
-
-    def _scanner_clear(self):
-        self.scanner_input.delete("1.0", "end")
-        for row in self._scan_tree.get_children():
-            self._scan_tree.delete(row)
-        self._scan_summary.set("")
-        self._scan_status.set("Cleared.")
-        self._last_scan = {}
-
-    def _scanner_send_to_info(self):
-        """
-        Pre-fill the Information tab form fields from the last parsed scan.
-        Switches to the Information tab when done.
-        """
-        f = self._last_scan
-        if not f:
-            messagebox.showwarning("Nothing to send",
-                                   "Parse a barcode first.")
-            return
-
-        def s(tag, alt=""):
-            return f.get(tag, alt).strip()
-
-        def _set(widget, value):
-            widget.delete(0, "end")
-            widget.insert(0, value)
-
-        _set(self.first,   s("DAC") or s("DBC"))
-        _set(self.middle,  s("DAD"))
-        _set(self.last,    s("DCS"))
-        _set(self.lic,     s("DAQ"))
-        _set(self.cls,     s("DCA"))
-        _set(self.birth,   s("DBB"))
-        _set(self.exp,     s("DBA"))
-        _set(self.issue,   s("DBD"))
-        _set(self.address, s("DAG"))
-        _set(self.city,    s("DAI"))
-        _set(self.zip,     s("DAK"))
-        _set(self.height,  s("DAU"))
-        _set(self.eyes,    s("DAY"))
-        _set(self.hair,    s("DAB"))
-        _set(self.weight,  s("DAW"))
-        _set(self.discriminator, s("DCF"))
-        _set(self.endorsement,   s("DAT"))
-        _set(self.restriction,   s("DAR"))
-        _set(self.inventory,     s("DCK"))
-        _set(self.race,          s("DCL"))
-        _set(self.audit,         s("DCJ"))
-        _set(self.compliance,    s("DDA"))
-
-        # State combo
-        st = s("DAJ")
-        if st:
-            self.state_var.set(st)
-
-        # Sex combo
-        sex_raw = s("DBC_SEX") or s("DBC")
-        sex_map = {"1": "1 – M", "2": "2 – F", "9": "9 – X"}
-        if sex_raw in sex_map:
-            self.sex_var.set(sex_map[sex_raw])
-
-        self.nb.select(self.tab_info)
-        self._scan_status.set("✓  Fields sent to Information tab.")
-
     # ═══════════════════════════════════════════════ helpers
 
-    def _on_iin_change(self, *_):
-        """When user picks from the IIN combo, sync the state dropdown."""
-        val = self._iin_var.get().strip()
-        # Extract IIN (first 6 digits) and state (after "—")
-        if "—" in val:
-            parts = val.split("—")
-            iin   = parts[0].strip()
-            state = parts[1].strip()
-            # Sync state dropdown without triggering _on_state_change loop
-            if state in _STATE_IIN and self.state_var.get() != state:
-                self.state_var.set(state)
-
-    def _get_iin(self) -> str:
-        """Extract the 6-digit IIN from the combo value."""
-        val = self._iin_var.get().strip()
-        if "—" in val:
-            return val.split("—")[0].strip()
-        # User may have typed a raw IIN directly
-        return val[:6] if len(val) >= 6 else val
+    def _fmt_date(self, val: str) -> str:
         val = val.strip().replace("-", "/").replace(" ", "")
         if not val:
             return val
@@ -904,29 +419,12 @@ class PDF417Studio:
             pass
         return val
 
-    # Known subfile lengths per state (from real scan data)
-    _STATE_SUBFILE = {
-        "PA":"0278","VA":"0256","NC":"0256","SC":"0256","CA":"0300",
-        "TX":"0300","FL":"0300","NY":"0320","IL":"0320","GA":"0350",
-        "OH":"0350","MI":"0350","WA":"0400","OR":"0400","AZ":"0278",
-        "CO":"0278","MD":"0278","MA":"0278","NJ":"0278","IN":"0278",
-        "MN":"0278","UT":"0278","WI":"0278","TN":"0278","MO":"0278",
-        "KY":"0278","NV":"0278","ID":"0278","MS":"0278","RI":"0278",
-        "NE":"0278","OK":"0278","AK":"0278","WY":"0278","WV":"0278",
-        "CT":"0256","LA":"0256","MT":"0256","NM":"0256","DE":"0256",
-        "IA":"0256","KS":"0256","ME":"0256","SD":"0256","DC":"0256",
-        "HI":"0256","AL":"0256","AR":"0256","ND":"0256","NH":"0256",
-        "VT":"0256","VI":"0256",
-    }
-
     def _on_state_change(self, *_):
         state = self.state_var.get()
         iin = _STATE_IIN.get(state)
         if iin:
-            self._iin_var.set(f"{iin}  —  {state}")
-        subfile = self._STATE_SUBFILE.get(state)
-        if subfile:
-            self.subfile_length_var.set(subfile)
+            self.issuer_id.delete(0, "end")
+            self.issuer_id.insert(0, iin)
 
     # ═══════════════════════════════════════════════ data collection
 
@@ -937,10 +435,10 @@ class PDF417Studio:
             return ""
 
         return AAMVAData(
-            issuer_id      = self._get_iin(),
+            issuer_id      = self.issuer_id.get(),
             version        = self.version.get(),
             jurisdiction   = self.jurisdiction.get(),
-            subfile_length = self.subfile_length_var.get().strip(),
+            subfile_length = self.subfile_length.get(),
             first_tag      = self.first_tag_var.get(),
             last           = self.last.get().upper(),
             first          = self.first.get().upper(),
@@ -997,9 +495,9 @@ class PDF417Studio:
             ratio     = self.y_ratio.get()
             padding   = self.quiet_zone.get()
             columns   = self.col_count.get()
-            rows      = self.row_count_var.get()
-            bar_h     = self.bar_height_var.get()
-            narrow_bw = self.narrow_bar_var.get()
+            rows      = self.row_count_var.get()       # 0 = auto
+            bar_h     = self.bar_height_var.get()      # row height multiplier
+            narrow_bw = self.narrow_bar_var.get()      # narrow bar width (scale)
         except (tk.TclError, ValueError) as exc:
             messagebox.showerror("Invalid settings", str(exc))
             return
@@ -1019,13 +517,18 @@ class PDF417Studio:
             )
             return
 
+        # scale from physical X-dim; override with narrow_bar_var if user changed it
         scale_from_xdim = max(1, round(dpi * x_mils / 1000.0))
         scale = narrow_bw if narrow_bw > 0 else scale_from_xdim
 
         try:
             img = generate_barcode(
-                data, columns=columns, scale=scale,
-                ratio=bar_h, padding=padding, rows=rows,
+                data,
+                columns=columns,
+                scale=scale,
+                ratio=bar_h,       # bar_height_var drives the row height ratio
+                padding=padding,
+                rows=rows,
             )
         except Exception as exc:
             messagebox.showerror("Barcode error", str(exc))
@@ -1039,6 +542,7 @@ class PDF417Studio:
         h_mm = img.height / dpi * 25.4
         ok_w = w_mm <= AAMVA_MAX_WIDTH_MM
         ok_h = h_mm <= AAMVA_MAX_HEIGHT_MM
+
         compliance = "✓ AAMVA" if (ok_w and ok_h) else "✗ EXCEEDS AAMVA LIMITS"
         self._phys_var.set(
             f"{w_mm:.2f} × {h_mm:.2f} mm  "
