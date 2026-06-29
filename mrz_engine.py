@@ -227,7 +227,7 @@ class TD3Validator:
         self.policy   = policy
         self._valid_types = {"P", "PO", "PD", "PS", "PE", "PM", "P<"}
 
-    def process(self, doc: NormalizedTD1Document) -> ValidatedTD1Document:
+    def process(self, doc: NormalizedTD1Document) -> ValidatedTD3Document:
         if doc.document_type not in self._valid_types:
             raise MRZValidationError(
                 f"Unsupported document type: '{doc.document_type}'")
@@ -254,18 +254,17 @@ class TD3Validator:
 
         self.policy.enforce_policy(dob_dt, exp_dt)
 
-        return ValidatedTD1Document(
+        return ValidatedTD3Document(
             document_type   = doc.document_type,
             issuing_country = doc.issuing_country,
             document_number = doc.document_number,
             dob             = doc.dob,
-            gender          = doc.gender,
+            gender          = doc.gender if doc.gender in ("M", "F") else "<",
             expiry          = doc.expiry,
             nationality     = doc.nationality,
             surname         = doc.surname,
             given_names     = doc.given_names,
-            optional_data1  = doc.optional_data1,
-            optional_data2  = "",
+            optional_data   = doc.optional_data1,
             dob_date        = dob_dt,
             expiry_date     = exp_dt,
         )
@@ -274,27 +273,22 @@ class TD3Serializer:
     def __init__(self):
         self.calc = CheckDigitCalculator()
 
-    def serialize(self, raw: RawTD3Document,
-                  transliterator: MRZTransliterator) -> TD3MRZ:
-        tx = transliterator.clean
-
-        doc_type    = tx(raw.document_type).ljust(2, "<")[:2]
-        country     = tx(raw.issuing_country)[:3].ljust(3, "<")
-        doc_num     = tx(raw.document_number).ljust(9, "<")[:9]
-        dob         = tx(raw.dob).ljust(6, "<")[:6]
-        gender      = raw.gender if raw.gender in ("M", "F") else "<"
-        expiry      = tx(raw.expiry).ljust(6, "<")[:6]
-        nationality = tx(raw.nationality)[:3].ljust(3, "<")
-        optional    = tx(raw.optional_data).ljust(14, "<")[:14]
-        surname     = tx(raw.surname)
-        given       = tx(raw.given_names)
+    def serialize(self, doc: ValidatedTD3Document) -> TD3MRZ:
+        doc_type    = doc.document_type.ljust(2, "<")[:2]
+        country     = doc.issuing_country[:3].ljust(3, "<")
+        doc_num     = doc.document_number.ljust(9, "<")[:9]
+        dob         = doc.dob.ljust(6, "<")[:6]
+        expiry      = doc.expiry.ljust(6, "<")[:6]
+        nationality = doc.nationality[:3].ljust(3, "<")
+        optional    = doc.optional_data.ljust(14, "<")[:14]
+        gender      = doc.gender if doc.gender in ("M", "F") else "<"
 
         doc_chk = self.calc.calculate(doc_num)
         dob_chk = self.calc.calculate(dob)
         exp_chk = self.calc.calculate(expiry)
         opt_chk = self.calc.calculate(optional)
 
-        line2_without_comp = (
+        line2_prefix = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
@@ -302,11 +296,11 @@ class TD3Serializer:
             f"{expiry}{exp_chk}"
             f"{optional}{opt_chk}"
         )
-        comp_chk = self.calc.calculate(line2_without_comp)
+        comp_chk = self.calc.calculate(line2_prefix)
 
-        name_field = f"{surname}<<{given}".ljust(39, "<")[:39]
+        name_field = f"{doc.surname}<<{doc.given_names}".ljust(39, "<")[:39]
         line1 = f"{doc_type}{country}{name_field}"
-        line2 = line2_without_comp + comp_chk
+        line2 = line2_prefix + comp_chk
 
         if len(line1) != 44:
             raise RuntimeError(f"TD3 line1 length is {len(line1)}, expected 44.")
@@ -330,7 +324,7 @@ class TD3ProcessorPipeline:
             issuing_country = self.tx.clean(raw.issuing_country),
             document_number = self.tx.clean(raw.document_number),
             dob             = self.tx.clean(raw.dob),
-            gender          = raw.gender if raw.gender in ("M", "F") else "<",
+            gender          = raw.gender,
             expiry          = self.tx.clean(raw.expiry),
             nationality     = self.tx.clean(raw.nationality),
             surname         = self.tx.clean(raw.surname),
@@ -339,19 +333,7 @@ class TD3ProcessorPipeline:
             optional_data2  = "",
         )
         validated = self.validator.process(normalized)
-        raw_for_serial = RawTD3Document(
-            document_type   = validated.document_type,
-            issuing_country = validated.issuing_country,
-            document_number = validated.document_number,
-            dob             = validated.dob,
-            gender          = validated.gender,
-            expiry          = validated.expiry,
-            nationality     = validated.nationality,
-            surname         = validated.surname,
-            given_names     = validated.given_names,
-            optional_data   = validated.optional_data1,
-        )
-        return self.serializer.serialize(raw_for_serial, self.tx)
+        return self.serializer.serialize(validated)
 
 def default_td3_pipeline() -> TD3ProcessorPipeline:
     return TD3ProcessorPipeline(
@@ -367,7 +349,7 @@ class TD2Validator:
         self.policy   = policy
         self._valid_types = {"A", "C", "I", "AC", "AI", "A<", "C<", "I<"}
 
-    def process(self, doc: NormalizedTD1Document) -> ValidatedTD1Document:
+    def process(self, doc: NormalizedTD1Document) -> ValidatedTD2Document:
         if doc.document_type not in self._valid_types:
             raise MRZValidationError(
                 f"Unsupported document type: '{doc.document_type}'")
@@ -394,18 +376,17 @@ class TD2Validator:
 
         self.policy.enforce_policy(dob_dt, exp_dt)
 
-        return ValidatedTD1Document(
+        return ValidatedTD2Document(
             document_type   = doc.document_type,
             issuing_country = doc.issuing_country,
             document_number = doc.document_number,
             dob             = doc.dob,
-            gender          = doc.gender,
+            gender          = doc.gender if doc.gender in ("M", "F") else "<",
             expiry          = doc.expiry,
             nationality     = doc.nationality,
             surname         = doc.surname,
             given_names     = doc.given_names,
-            optional_data1  = doc.optional_data1,
-            optional_data2  = "",
+            optional_data   = doc.optional_data1,
             dob_date        = dob_dt,
             expiry_date     = exp_dt,
         )
@@ -414,27 +395,22 @@ class TD2Serializer:
     def __init__(self):
         self.calc = CheckDigitCalculator()
 
-    def serialize(self, raw: RawTD2Document,
-                  transliterator: MRZTransliterator) -> TD2MRZ:
-        tx = transliterator.clean
-
-        doc_type    = tx(raw.document_type).ljust(2, "<")[:2]
-        country     = tx(raw.issuing_country)[:3].ljust(3, "<")
-        doc_num     = tx(raw.document_number).ljust(9, "<")[:9]
-        dob         = tx(raw.dob).ljust(6, "<")[:6]
-        gender      = raw.gender if raw.gender in ("M", "F") else "<"
-        expiry      = tx(raw.expiry).ljust(6, "<")[:6]
-        nationality = tx(raw.nationality)[:3].ljust(3, "<")
-        optional    = tx(raw.optional_data).ljust(7, "<")[:7]
-        surname     = tx(raw.surname)
-        given       = tx(raw.given_names)
+    def serialize(self, doc: ValidatedTD2Document) -> TD2MRZ:
+        doc_type    = doc.document_type.ljust(2, "<")[:2]
+        country     = doc.issuing_country[:3].ljust(3, "<")
+        doc_num     = doc.document_number.ljust(9, "<")[:9]
+        dob         = doc.dob.ljust(6, "<")[:6]
+        expiry      = doc.expiry.ljust(6, "<")[:6]
+        nationality = doc.nationality[:3].ljust(3, "<")
+        optional    = doc.optional_data.ljust(7, "<")[:7]
+        gender      = doc.gender if doc.gender in ("M", "F") else "<"
 
         doc_chk = self.calc.calculate(doc_num)
         dob_chk = self.calc.calculate(dob)
         exp_chk = self.calc.calculate(expiry)
         opt_chk = self.calc.calculate(optional)
 
-        line2_without_comp = (
+        line2_prefix = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
@@ -442,11 +418,11 @@ class TD2Serializer:
             f"{expiry}{exp_chk}"
             f"{optional}{opt_chk}"
         )
-        comp_chk = self.calc.calculate(line2_without_comp)
+        comp_chk = self.calc.calculate(line2_prefix)
 
-        name_field = f"{surname}<<{given}".ljust(31, "<")[:31]
+        name_field = f"{doc.surname}<<{doc.given_names}".ljust(31, "<")[:31]
         line1 = f"{doc_type}{country}{name_field}"
-        line2 = line2_without_comp + comp_chk
+        line2 = line2_prefix + comp_chk
 
         if len(line1) != 36:
             raise RuntimeError(f"TD2 line1 length is {len(line1)}, expected 36.")
@@ -482,7 +458,7 @@ class UniversalMRZPipeline:
             issuing_country = self.tx.clean(raw.issuing_country),
             document_number = self.tx.clean(raw.document_number),
             dob             = self.tx.clean(raw.dob),
-            gender          = raw.gender if raw.gender in ("M", "F") else "<",
+            gender          = raw.gender,
             expiry          = self.tx.clean(raw.expiry),
             nationality     = self.tx.clean(raw.nationality),
             surname         = self.tx.clean(raw.surname),
@@ -491,7 +467,7 @@ class UniversalMRZPipeline:
             optional_data2  = "",
         )
         validated = self.td2_validator.process(normalized)
-        return self.td2_serial.serialize(raw, self.tx)
+        return self.td2_serial.serialize(validated)
 
     def process_td3(self, raw: RawTD3Document) -> TD3MRZ:
         normalized = NormalizedTD1Document(
@@ -499,7 +475,7 @@ class UniversalMRZPipeline:
             issuing_country = self.tx.clean(raw.issuing_country),
             document_number = self.tx.clean(raw.document_number),
             dob             = self.tx.clean(raw.dob),
-            gender          = raw.gender if raw.gender in ("M", "F") else "<",
+            gender          = raw.gender,
             expiry          = self.tx.clean(raw.expiry),
             nationality     = self.tx.clean(raw.nationality),
             surname         = self.tx.clean(raw.surname),
@@ -508,7 +484,7 @@ class UniversalMRZPipeline:
             optional_data2  = "",
         )
         validated = self.td3_validator.process(normalized)
-        return self.td3_serial.serialize(raw, self.tx)
+        return self.td3_serial.serialize(validated)
 
 def default_universal_pipeline() -> UniversalMRZPipeline:
     return UniversalMRZPipeline(
