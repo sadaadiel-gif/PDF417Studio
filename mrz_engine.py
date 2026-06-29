@@ -289,25 +289,24 @@ class TD3Serializer:
         surname     = tx(raw.surname)
         given       = tx(raw.given_names)
 
-        doc_chk    = self.calc.calculate(doc_num)
-        dob_chk    = self.calc.calculate(dob)
-        exp_chk    = self.calc.calculate(expiry)
-        opt_chk    = self.calc.calculate(optional)
+        doc_chk = self.calc.calculate(doc_num)
+        dob_chk = self.calc.calculate(dob)
+        exp_chk = self.calc.calculate(expiry)
+        opt_chk = self.calc.calculate(optional)
 
-        composite_str = doc_num + doc_chk + dob + dob_chk + expiry + exp_chk + optional + opt_chk
-        comp_chk = self.calc.calculate(composite_str)
-
-        name_field = f"{surname}<<{given}".ljust(39, "<")[:39]
-        line1 = f"{doc_type}{country}{name_field}"
-        line2 = (
+        line2_without_comp = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
             f"{gender}"
             f"{expiry}{exp_chk}"
             f"{optional}{opt_chk}"
-            f"{comp_chk}"
         )
+        comp_chk = self.calc.calculate(line2_without_comp)
+
+        name_field = f"{surname}<<{given}".ljust(39, "<")[:39]
+        line1 = f"{doc_type}{country}{name_field}"
+        line2 = line2_without_comp + comp_chk
 
         if len(line1) != 44:
             raise RuntimeError(f"TD3 line1 length is {len(line1)}, expected 44.")
@@ -430,24 +429,24 @@ class TD2Serializer:
         surname     = tx(raw.surname)
         given       = tx(raw.given_names)
 
-        doc_chk  = self.calc.calculate(doc_num)
-        dob_chk  = self.calc.calculate(dob)
-        exp_chk  = self.calc.calculate(expiry)
+        doc_chk = self.calc.calculate(doc_num)
+        dob_chk = self.calc.calculate(dob)
+        exp_chk = self.calc.calculate(expiry)
+        opt_chk = self.calc.calculate(optional)
 
-        composite_str = doc_num + doc_chk + dob + dob_chk + expiry + exp_chk + optional
-        comp_chk = self.calc.calculate(composite_str)
-
-        name_field = f"{surname}<<{given}".ljust(31, "<")[:31]
-        line1 = f"{doc_type}{country}{name_field}"
-        line2 = (
+        line2_without_comp = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
             f"{gender}"
             f"{expiry}{exp_chk}"
-            f"{optional}"
-            f"{comp_chk}"
+            f"{optional}{opt_chk}"
         )
+        comp_chk = self.calc.calculate(line2_without_comp)
+
+        name_field = f"{surname}<<{given}".ljust(31, "<")[:31]
+        line1 = f"{doc_type}{country}{name_field}"
+        line2 = line2_without_comp + comp_chk
 
         if len(line1) != 36:
             raise RuntimeError(f"TD2 line1 length is {len(line1)}, expected 36.")
