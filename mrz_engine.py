@@ -279,12 +279,12 @@ class TD3Serializer:
         tx = transliterator.clean
 
         doc_type    = tx(raw.document_type).ljust(2, "<")[:2]
-        country     = tx(raw.issuing_country)[:3]
+        country     = tx(raw.issuing_country)[:3].ljust(3, "<")
         doc_num     = tx(raw.document_number).ljust(9, "<")[:9]
-        dob         = tx(raw.dob)[:6]
+        dob         = tx(raw.dob).ljust(6, "<")[:6]
         gender      = raw.gender if raw.gender in ("M", "F") else "<"
-        expiry      = tx(raw.expiry)[:6]
-        nationality = tx(raw.nationality)[:3]
+        expiry      = tx(raw.expiry).ljust(6, "<")[:6]
+        nationality = tx(raw.nationality)[:3].ljust(3, "<")
         optional    = tx(raw.optional_data).ljust(14, "<")[:14]
         surname     = tx(raw.surname)
         given       = tx(raw.given_names)
@@ -299,7 +299,6 @@ class TD3Serializer:
 
         name_field = f"{surname}<<{given}".ljust(39, "<")[:39]
         line1 = f"{doc_type}{country}{name_field}"
-
         line2 = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
@@ -310,10 +309,10 @@ class TD3Serializer:
             f"{comp_chk}"
         )
 
-        if len(line1) != 44 or len(line2) != 44:
-            raise RuntimeError(
-                f"TD3 line length error: L1={len(line1)} L2={len(line2)} (expected 44)"
-            )
+        if len(line1) != 44:
+            raise RuntimeError(f"TD3 line1 length is {len(line1)}, expected 44.")
+        if len(line2) != 44:
+            raise RuntimeError(f"TD3 line2 length is {len(line2)}, expected 44.")
 
         return TD3MRZ(line1=line1, line2=line2)
 
@@ -421,12 +420,12 @@ class TD2Serializer:
         tx = transliterator.clean
 
         doc_type    = tx(raw.document_type).ljust(2, "<")[:2]
-        country     = tx(raw.issuing_country)[:3]
+        country     = tx(raw.issuing_country)[:3].ljust(3, "<")
         doc_num     = tx(raw.document_number).ljust(9, "<")[:9]
-        dob         = tx(raw.dob)[:6]
+        dob         = tx(raw.dob).ljust(6, "<")[:6]
         gender      = raw.gender if raw.gender in ("M", "F") else "<"
-        expiry      = tx(raw.expiry)[:6]
-        nationality = tx(raw.nationality)[:3]
+        expiry      = tx(raw.expiry).ljust(6, "<")[:6]
+        nationality = tx(raw.nationality)[:3].ljust(3, "<")
         optional    = tx(raw.optional_data).ljust(7, "<")[:7]
         surname     = tx(raw.surname)
         given       = tx(raw.given_names)
@@ -450,10 +449,10 @@ class TD2Serializer:
             f"{comp_chk}"
         )
 
-        if len(line1) != 36 or len(line2) != 36:
-            raise RuntimeError(
-                f"TD2 line length error: L1={len(line1)} L2={len(line2)} (expected 36)"
-            )
+        if len(line1) != 36:
+            raise RuntimeError(f"TD2 line1 length is {len(line1)}, expected 36.")
+        if len(line2) != 36:
+            raise RuntimeError(f"TD2 line2 length is {len(line2)}, expected 36.")
 
         return TD2MRZ(line1=line1, line2=line2)
 
