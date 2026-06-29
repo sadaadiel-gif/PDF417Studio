@@ -238,23 +238,29 @@ class PDF417Studio:
         self.nb = ttk.Notebook(self.root)
         self.nb.pack(fill="both", expand=True, padx=4, pady=4)
 
-        self.tab_info    = ttk.Frame(self.nb)
-        self.tab_pdf417  = ttk.Frame(self.nb)
-        self.tab_code128 = ttk.Frame(self.nb)
-        self.tab_scanner = ttk.Frame(self.nb)
-        self.tab_mrz     = ttk.Frame(self.nb)
+        self.tab_info      = ttk.Frame(self.nb)
+        self.tab_pdf417    = ttk.Frame(self.nb)
+        self.tab_code128   = ttk.Frame(self.nb)
+        self.tab_scanner   = ttk.Frame(self.nb)
+        self.tab_mrz       = ttk.Frame(self.nb)
+        self.tab_downloads = ttk.Frame(self.nb)
+        self.tab_security  = ttk.Frame(self.nb)
 
-        self.nb.add(self.tab_info,    text="Information")
-        self.nb.add(self.tab_pdf417,  text="PDF417")
-        self.nb.add(self.tab_code128, text="Code 128")
-        self.nb.add(self.tab_scanner, text="🔍 Scanner")
-        self.nb.add(self.tab_mrz,     text="🪪 MRZ")
+        self.nb.add(self.tab_info,      text="Information")
+        self.nb.add(self.tab_pdf417,    text="PDF417")
+        self.nb.add(self.tab_code128,   text="Code 128")
+        self.nb.add(self.tab_scanner,   text="🔍 Scanner")
+        self.nb.add(self.tab_mrz,       text="🪪 MRZ")
+        self.nb.add(self.tab_downloads, text="⬇ Downloads")
+        self.nb.add(self.tab_security,  text="🔒 Security")
 
         self._build_information_tab()
         self._build_pdf417_tab()
         self._build_code128_tab()
         self._build_scanner_tab()
         self._build_mrz_tab()
+        self._build_downloads_tab()
+        self._build_security_tab()
 
     # ═══════════════════════════════════════════════ Tab 1 — Information
 
@@ -1140,6 +1146,277 @@ class PDF417Studio:
                 self._c128_status.set(self._c128_status.get() + f"  →  PDF: {path}")
             except Exception as exc:
                 messagebox.showerror("PDF export failed", str(exc))
+
+    # ═══════════════════════════════════════════════ Tab 6 — Downloads
+
+    def _build_downloads_tab(self):
+        """
+        Downloads tab — links to the PSD FILES Google Drive folder.
+        Opens links in the default browser via webbrowser.open().
+        """
+        import webbrowser
+
+        DRIVE_FOLDER = "https://drive.google.com/drive/folders/1eZCoztfcGjwAskhKmlwDAuTTeC0LDSuo"
+
+        root = ttk.Frame(self.tab_downloads, padding=16)
+        root.pack(fill="both", expand=True)
+
+        # ── Header ────────────────────────────────────────────────────────
+        hdr = tk.Frame(root, bg="#1a1a2e")
+        hdr.pack(fill="x", pady=(0, 16))
+
+        tk.Label(hdr, text="⬇  Downloads", bg="#1a1a2e", fg="white",
+                 font=("Helvetica", 16, "bold"), pady=14).pack(side="left", padx=16)
+        tk.Label(hdr, text="PSD Files & Design Assets",
+                 bg="#1a1a2e", fg="#7a83a6",
+                 font=("Helvetica", 10)).pack(side="left")
+
+        # ── Info card ─────────────────────────────────────────────────────
+        info_lf = ttk.LabelFrame(root, text="PSD Files — Google Drive", padding=16)
+        info_lf.pack(fill="x", pady=(0, 16))
+
+        desc = (
+            "Download PSD templates, card backgrounds, and design assets from the\n"
+            "official PDF417 Studio Google Drive folder. Files open directly in\n"
+            "Google Drive — sign in to download individual files or the full folder."
+        )
+        ttk.Label(info_lf, text=desc, font=("Helvetica", 10),
+                  foreground="#444", justify="left").pack(anchor="w", pady=(0, 12))
+
+        url_frame = ttk.Frame(info_lf)
+        url_frame.pack(fill="x")
+
+        url_entry = ttk.Entry(url_frame, font=("Courier", 9), width=60)
+        url_entry.insert(0, DRIVE_FOLDER)
+        url_entry.config(state="readonly")
+        url_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        ttk.Button(url_frame, text="Copy Link",
+                   command=lambda: (
+                       self.root.clipboard_clear(),
+                       self.root.clipboard_append(DRIVE_FOLDER)
+                   )).pack(side="left", padx=(0, 4))
+
+        ttk.Button(url_frame, text="🌐  Open in Browser",
+                   command=lambda: webbrowser.open(DRIVE_FOLDER)).pack(side="left")
+
+        # ── Quick access buttons ──────────────────────────────────────────
+        btns_lf = ttk.LabelFrame(root, text="Quick Access", padding=16)
+        btns_lf.pack(fill="x", pady=(0, 16))
+
+        items = [
+            ("📁", "PSD Files Folder",
+             "All PSD card templates and design assets",
+             DRIVE_FOLDER),
+            ("🌐", "PDF417 Studio Website",
+             "Landing page with usage guide and documentation",
+             "https://muyaallan.github.io/PDF417Studio/"),
+            ("💾", "Latest Release (.exe)",
+             "Download the latest PDF417Studio.exe directly",
+             "https://github.com/muyaallan/PDF417Studio/releases/latest/download/PDF417Studio.exe"),
+            ("📖", "GitHub Repository",
+             "Source code, issues, and release history",
+             "https://github.com/muyaallan/PDF417Studio"),
+        ]
+
+        for i, (icon, title, desc, url) in enumerate(items):
+            row = i // 2
+            col = i %  2
+            card = ttk.Frame(btns_lf, relief="groove", padding=12)
+            card.grid(row=row, column=col, sticky="ew", padx=6, pady=6)
+
+            top_row = ttk.Frame(card)
+            top_row.pack(fill="x")
+            ttk.Label(top_row, text=f"{icon}  {title}",
+                      font=("Helvetica", 11, "bold")).pack(side="left")
+            ttk.Button(top_row, text="Open →",
+                       command=lambda u=url: webbrowser.open(u)).pack(side="right")
+            ttk.Label(card, text=desc,
+                      font=("Helvetica", 9), foreground="#666").pack(anchor="w", pady=(4, 0))
+
+        btns_lf.columnconfigure(0, weight=1)
+        btns_lf.columnconfigure(1, weight=1)
+
+        # ── How to download ───────────────────────────────────────────────
+        how_lf = ttk.LabelFrame(root, text="How to Download PSD Files", padding=16)
+        how_lf.pack(fill="x")
+
+        steps = [
+            ("1", "Click  'Open in Browser'  above — the Google Drive folder opens."),
+            ("2", "Sign in to your Google account if prompted."),
+            ("3", "Right-click any file → 'Download'  to save it to your computer."),
+            ("4", "To download everything: click the folder name → ⋮ → 'Download all'."),
+        ]
+
+        for num, text in steps:
+            row = ttk.Frame(how_lf)
+            row.pack(fill="x", pady=3)
+            tk.Label(row, text=num, width=2, bg="#4f8ef7", fg="white",
+                     font=("Helvetica", 9, "bold"),
+                     relief="flat", padx=4, pady=2).pack(side="left", padx=(0, 10))
+            ttk.Label(row, text=text, font=("Helvetica", 10)).pack(side="left")
+
+    # ═══════════════════════════════════════════════ Tab 7 — Security
+
+    def _build_security_tab(self):
+        root = ttk.Frame(self.tab_security, padding=0)
+        root.pack(fill="both", expand=True)
+
+        # ── Dark header ───────────────────────────────────────────────────
+        hdr = tk.Frame(root, bg="#0d0f1a")
+        hdr.pack(fill="x")
+        tk.Label(hdr, text="🔒  Security, Legal & Terms of Use",
+                 bg="#0d0f1a", fg="white",
+                 font=("Helvetica", 15, "bold"), pady=16).pack(side="left", padx=20)
+        tk.Label(hdr, text="PDF417Studio v1.0.0  ·  © 2026 PDF417Studio. All Rights Reserved.",
+                 bg="#0d0f1a", fg="#7a83a6",
+                 font=("Helvetica", 9)).pack(side="right", padx=20)
+
+        # ── Scrollable content ────────────────────────────────────────────
+        canvas = tk.Canvas(root, highlightthickness=0, bg="#f8f9fc")
+        vsb = ttk.Scrollbar(root, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        inner = ttk.Frame(canvas, padding=24)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        def _on_resize(e):
+            canvas.itemconfig(win_id, width=e.width)
+        canvas.bind("<Configure>", _on_resize)
+        inner.bind("<Configure>",
+                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        # Mouse wheel scroll
+        def _on_scroll(e):
+            canvas.yview_scroll(int(-1*(e.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_scroll)
+
+        # ── Section builder ───────────────────────────────────────────────
+        def section(title, body, icon=""):
+            lf = ttk.LabelFrame(inner, text=f"  {icon}  {title}" if icon else f"  {title}",
+                                padding=14)
+            lf.pack(fill="x", pady=(0, 14))
+            ttk.Label(lf, text=body, wraplength=860, justify="left",
+                      font=("Helvetica", 10), foreground="#333").pack(anchor="w")
+
+        def warning_banner(text):
+            f = tk.Frame(inner, bg="#fff3cd", bd=1, relief="solid")
+            f.pack(fill="x", pady=(0, 14))
+            tk.Label(f, text=text, bg="#fff3cd", fg="#856404",
+                     font=("Helvetica", 10, "bold"),
+                     wraplength=860, justify="left", pady=10, padx=14).pack(anchor="w")
+
+        # ── Content ───────────────────────────────────────────────────────
+        warning_banner(
+            "⚠  This software is intended solely for lawful, authorized, and ethical "
+            "applications. Misuse for fraud, identity deception, document forgery, or any "
+            "unlawful purpose is strictly prohibited and may be subject to criminal prosecution."
+        )
+
+        section("Overview", (
+            "PDF417Studio is a comprehensive desktop application engineered for creating, "
+            "editing, and exporting PDF417 barcodes, as well as handling industry-standard "
+            "data serialization formats including TD1, TD2, TD3, and Code 128.\n\n"
+            "The application is designed exclusively for legitimate business workflows, "
+            "educational instruction, systems testing, inventory management, logistics "
+            "optimization, document management, and professional research purposes."
+        ), "📋")
+
+        section("Intended Use", (
+            "This software is intended solely for lawful, authorized, and ethical applications. "
+            "It must only be deployed within professional environments where operators possess "
+            "the explicit legal rights, permissions, and mandates to process the data being managed."
+        ), "✅")
+
+        section("Security & Privacy", (
+            "Local Processing:  PDF417Studio processes all data locally on the user's device "
+            "and does not intentionally transmit user data or telemetry to external services.\n\n"
+            "User Responsibility:  Users retain sole responsibility for securing all files, "
+            "project data, and printed assets generated by the application.\n\n"
+            "Regulatory Compliance:  Users must ensure that all operations conducted within "
+            "the software comply strictly with local, national, and international privacy laws "
+            "and data protection regulations."
+        ), "🔒")
+
+        section("Safety Measures", (
+            "Data Authorization:  Ensure all data fields are populated using only authorized, "
+            "legally obtained data streams.\n\n"
+            "Verification Protocols:  The software does not warrant the accuracy, completeness, "
+            "or validity of user-supplied data. Users are solely responsible for verifying all "
+            "generated output and performing hardware scanning tests prior to operational use.\n\n"
+            "Backup Procedures:  Maintain independent, redundant backups of all critical "
+            "configuration parameters and project datasets.\n\n"
+            "Lifecycle Management:  Utilize the latest official version of the software to "
+            "ensure compliance with updated security practices and performance baselines."
+        ), "🛡️")
+
+        section("Third-Party Components", (
+            "PDF417Studio may include third-party libraries distributed under their respective "
+            "licenses. Ownership and licensing of such components remain with their respective "
+            "copyright holders."
+        ), "📦")
+
+        section("Terms of Use", (
+            "1.  Prohibition of Illegal Activity:  This software must not be used, directly or "
+            "indirectly, for any illegal, fraudulent, or malicious activities.\n\n"
+            "2.  Malicious Misuse Restrictions:  Use of this application for fraud, identity "
+            "deception, unauthorized systems access, document forgery, or any form of unlawful "
+            "misrepresentation is strictly prohibited.\n\n"
+            "3.  Distribution Limitations:  Redistribution, modification, reverse engineering, "
+            "decompilation, or resale of the software is prohibited except where such restrictions "
+            "are unenforceable under applicable law.\n\n"
+            "4.  Export Compliance:  Users are responsible for ensuring compliance with all "
+            "applicable export control laws and regulations governing the use, transfer, or "
+            "distribution of this software.\n\n"
+            "5.  Binding Agreement:  Downloading, installing, running, or otherwise utilizing "
+            "the software signifies immediate, full acceptance of these terms.\n\n"
+            "6.  Governing Law:  This Agreement shall be governed by and construed in accordance "
+            "with the laws of Kenya."
+        ), "📜")
+
+        section("Disclaimer", (
+            "PDF417Studio is provided on an \"AS IS\" and \"AS AVAILABLE\" basis without "
+            "warranties of any kind, whether express, implied, statutory, or otherwise, including "
+            "but not limited to any warranties of merchantability, fitness for a particular "
+            "purpose, or non-infringement.\n\n"
+            "To the maximum extent permitted by applicable law, the developers, authors, and "
+            "copyright holders shall not be liable for any direct, indirect, incidental, "
+            "consequential, special, exemplary, or punitive damages, including loss of profits, "
+            "loss of data, business interruption, or other commercial damages arising from or "
+            "related to the use, inability to use, performance, or misuse of this software."
+        ), "⚠️")
+
+        section("License Notice", (
+            "PDF417Studio is proprietary software. All intellectual property rights, including "
+            "the software, source code, executable binaries, user interface designs, "
+            "documentation, assets, and layout structures, remain the exclusive property of the "
+            "copyright owner.\n\n"
+            "This software is not open source and is not intended for public resale, "
+            "redistribution, or commercial sub-licensing unless explicitly authorized by a "
+            "separate, signed agreement from the copyright owner."
+        ), "©️")
+
+        section("Trademark", (
+            "\"PDF417Studio\" is a trademark or product name of PDF417Studio. Unauthorized use "
+            "of the name in connection with modified or redistributed versions of the software "
+            "is prohibited without prior written permission."
+        ), "™️")
+
+        section("Support", (
+            "For technical inquiries, operational guidance, deployment assistance, or official "
+            "licensing documentation, please contact the software author directly through the "
+            "official communication channels designated by the copyright owner.\n\n"
+            "GitHub:  https://github.com/muyaallan/PDF417Studio"
+        ), "💬")
+
+        # ── Footer ────────────────────────────────────────────────────────
+        foot = tk.Frame(inner, bg="#0d0f1a")
+        foot.pack(fill="x", pady=(8, 0))
+        tk.Label(foot, text="PDF417Studio  ·  Release 1.0.0  ·  Copyright © 2026 PDF417Studio. All Rights Reserved.  ·  Governed by the laws of Kenya.",
+                 bg="#0d0f1a", fg="#7a83a6",
+                 font=("Helvetica", 8), pady=12).pack()
 
     def _about(self):
         messagebox.showinfo("PDF417 Studio", "PDF417 Studio\nAAMVA 2016")

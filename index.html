@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PDF417 Studio — AAMVA Barcode & MRZ Generator</title>
+<meta name="description" content="Professional Windows desktop tool for generating AAMVA-compliant PDF417 barcodes, Code 128 barcodes, and ICAO 9303 MRZ for ID cards and passports."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0b14; --surface:#11131f; --card:#161928; --border:#242840;
+    --accent:#4f8ef7; --accent2:#7c5cfc; --glow:rgba(79,142,247,.18);
+    --text:#e8ecf4; --muted:#7a83a6;
+    --mono:'JetBrains Mono',monospace; --sans:'Space Grotesk',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:60px;background:rgba(10,11,20,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+  .nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem;text-decoration:none;color:var(--text)}
+  .nav-brand img{width:30px;height:30px;border-radius:6px}
+  .nav-links{display:flex;gap:28px}
+  .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .2s}
+  .nav-links a:hover{color:var(--text)}
+  .nav-dl{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:7px 18px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;transition:opacity .2s}
+  .nav-dl:hover{opacity:.85}
+
+  /* HERO */
+  .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 24px 80px;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:48px 48px;opacity:.3;mask-image:radial-gradient(ellipse 80% 60% at 50% 40%,black 30%,transparent 100%)}
+  .hero::after{content:'';position:absolute;width:700px;height:500px;top:10%;left:50%;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(79,142,247,.13) 0%,transparent 70%);pointer-events:none}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.25);color:var(--accent);font-family:var(--mono);font-size:.78rem;padding:5px 14px;border-radius:100px;margin-bottom:28px;position:relative;z-index:1}
+  .badge::before{content:'';width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  .hero h1{font-size:clamp(2.8rem,7vw,5.5rem);font-weight:700;letter-spacing:-.04em;line-height:1.05;position:relative;z-index:1;margin-bottom:8px}
+  .hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:var(--muted);max-width:580px;margin:20px auto 40px;position:relative;z-index:1}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1}
+  .btn-primary{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:14px 30px;border-radius:10px;text-decoration:none;font-weight:700;font-size:1rem;box-shadow:0 0 32px rgba(79,142,247,.35);transition:transform .2s,box-shadow .2s}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 48px rgba(79,142,247,.5)}
+  .btn-secondary{display:inline-flex;align-items:center;gap:9px;background:transparent;border:1px solid var(--border);color:var(--text);padding:14px 30px;border-radius:10px;text-decoration:none;font-weight:600;font-size:1rem;transition:border-color .2s,background .2s}
+  .btn-secondary:hover{border-color:var(--accent);background:var(--glow)}
+
+  /* BARCODE PREVIEW */
+  .barcode-preview{position:relative;z-index:1;margin:64px auto 0;width:min(680px,90vw);background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 0 1px rgba(79,142,247,.08)}
+  .barcode-topbar{display:flex;align-items:center;gap:7px;margin-bottom:20px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot-r{background:#ff5f57}.dot-y{background:#febc2e}.dot-g{background:#28c840}
+  .barcode-title{margin:0 auto;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+  .barcode-strips{display:flex;gap:2px;height:72px;align-items:stretch;overflow:hidden}
+  .strip{flex-shrink:0;background:var(--text);animation:flicker 3s ease-in-out infinite}
+  @keyframes flicker{0%,100%{opacity:1}50%{opacity:.85}}
+  .barcode-data{margin-top:16px;font-family:var(--mono);font-size:.7rem;color:var(--accent);opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* SECTIONS */
+  section{padding:96px 24px}
+  .container{max-width:1100px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+  .section-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;letter-spacing:-.03em;margin-bottom:16px;line-height:1.15}
+  .section-desc{color:var(--muted);max-width:520px;font-size:1.05rem}
+
+  /* FEATURES */
+  #features{background:var(--surface)}
+  .features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-top:56px}
+  .feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;transition:border-color .25s,transform .25s}
+  .feat-card:hover{border-color:rgba(79,142,247,.4);transform:translateY(-3px)}
+  .feat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:16px}
+  .feat-card h3{font-size:1.05rem;font-weight:600;margin-bottom:8px}
+  .feat-card p{color:var(--muted);font-size:.92rem;line-height:1.6}
+
+  /* TABS DEMO */
+  .tabs-demo{margin-top:56px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px}
+  .tab-item{padding:12px 18px;font-size:.85rem;color:var(--muted);cursor:default;border-bottom:2px solid transparent;transition:color .2s}
+  .tab-item.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-content{padding:24px;font-family:var(--mono);font-size:.8rem;line-height:2}
+  .t-muted{color:var(--muted)}.t-accent{color:var(--accent)}.t-green{color:#4ade80}.t-yellow{color:#fbbf24}.t-purple{color:#a78bfa}
+
+  /* STEPS */
+  .steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0;margin-top:56px;position:relative}
+  .steps::before{content:'';position:absolute;top:28px;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent)}
+  .step{padding:0 28px 0 0;position:relative}
+  .step-num{width:56px;height:56px;border-radius:50%;background:var(--card);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1.1rem;font-weight:600;color:var(--accent);margin-bottom:20px;position:relative;z-index:1;box-shadow:0 0 20px var(--glow)}
+  .step h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+  .step p{color:var(--muted);font-size:.9rem;line-height:1.6}
+
+  /* IIN TABLE */
+  #iin{background:var(--surface)}
+  .iin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:40px;max-height:420px;overflow-y:auto;padding-right:8px}
+  .iin-grid::-webkit-scrollbar{width:4px}
+  .iin-grid::-webkit-scrollbar-track{background:var(--border)}
+  .iin-grid::-webkit-scrollbar-thumb{background:var(--accent);border-radius:2px}
+  .iin-row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:.85rem}
+  .iin-row .state{font-weight:600;color:var(--text)}
+  .iin-row .iin{font-family:var(--mono);color:var(--accent);font-size:.82rem}
+  #iin-search{width:100%;max-width:320px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--sans);font-size:.9rem;margin-top:24px;outline:none;transition:border-color .2s}
+  #iin-search:focus{border-color:var(--accent)}
+  #iin-search::placeholder{color:var(--muted)}
+
+  /* MRZ */
+  #mrz{background:var(--bg)}
+  .mrz-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+  .mrz-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .25s,transform .25s}
+  .mrz-card:hover{border-color:rgba(79,142,247,.4);transform:translateY(-3px)}
+  .mrz-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .mrz-badge{font-family:var(--mono);font-size:.7rem;padding:3px 10px;border-radius:100px;border:1px solid}
+  .mrz-badge.td1{color:#4ade80;border-color:#4ade80;background:rgba(74,222,128,.08)}
+  .mrz-badge.td2{color:#fbbf24;border-color:#fbbf24;background:rgba(251,191,36,.08)}
+  .mrz-badge.td3{color:var(--accent);border-color:var(--accent);background:rgba(79,142,247,.08)}
+  .mrz-output{background:#0d0d0d;border-radius:8px;padding:14px;font-family:var(--mono);font-size:.7rem;line-height:2;color:#00ff88;margin-top:12px;word-break:break-all}
+  .mrz-card h3{font-size:1rem;font-weight:600;margin-bottom:6px}
+  .mrz-card p{color:var(--muted);font-size:.85rem;line-height:1.5}
+
+  /* SCANNER */
+  #scanner{background:var(--surface)}
+  .scanner-split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;margin-top:56px}
+  .scanner-terminal{background:#0d0f1a;border:1px solid var(--border);border-radius:14px;overflow:hidden;font-family:var(--mono);font-size:.78rem}
+  .term-bar{background:var(--card);padding:10px 16px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border)}
+  .term-body{padding:20px;line-height:2}
+  .scanner-list{list-style:none;margin-top:24px}
+  .scanner-list li{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.95rem}
+  .scanner-list li:last-child{border-bottom:none}
+  .scanner-list li::before{content:'→';color:var(--accent);font-family:var(--mono);flex-shrink:0;margin-top:2px}
+
+  /* COMPLIANCE */
+  .compliance-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+  .comp-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:14px}
+  .comp-check{width:36px;height:36px;border-radius:50%;background:rgba(74,222,128,.1);border:1.5px solid #4ade80;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;color:#4ade80}
+  .comp-item span{font-size:.9rem;color:var(--muted);line-height:1.4}
+
+  /* DOWNLOAD CTA */
+  #download{text-align:center;background:linear-gradient(180deg,var(--bg) 0%,#0c0e1e 100%)}
+  .cta-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:64px 48px;max-width:700px;margin:0 auto;position:relative;overflow:hidden}
+  .cta-box::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:400px;height:300px;background:radial-gradient(ellipse,rgba(79,142,247,.1) 0%,transparent 70%);pointer-events:none}
+  .cta-box h2{font-size:2.2rem;font-weight:700;letter-spacing:-.03em;margin-bottom:16px}
+  .cta-box p{color:var(--muted);margin-bottom:36px;font-size:1.05rem}
+  .dl-meta{display:flex;gap:24px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+  .dl-meta span{font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+
+  /* FOOTER */
+  footer{border-top:1px solid var(--border);padding:32px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:.85rem}
+  footer a{color:var(--muted);text-decoration:none}
+  footer a:hover{color:var(--text)}
+
+  /* RESPONSIVE */
+  @media(max-width:768px){
+    nav{padding:0 20px}.nav-links{display:none}
+    .scanner-split,.mrz-cards,.compliance-grid{grid-template-columns:1fr}
+    .steps::before{display:none}
+    .cta-box{padding:40px 24px}
+    footer{flex-direction:column;text-align:center}
+  }
+  @media(max-width:480px){.compliance-grid{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <img src="assets/logo.png" alt="PDF417 Studio"/>
+    PDF417 Studio
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#usage">How it works</a>
+    <a href="#iin">IIN Reference</a>
+    <a href="#mrz">MRZ</a>
+    <a href="#scanner">Scanner</a>
+    <a href="#downloads">Downloads</a>
+    <a href="#security">Security</a>
+    <a href="#download">Get App</a>
+  </div>
+  <a class="nav-dl" href="https://github.com/muyaallan/PDF417Studio/releases/latest/download/PDF417Studio.exe">↓ Download</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">AAMVA 2016 · ICAO 9303 Compliant</div>
+  <h1>Generate <span>PDF417</span><br/>barcodes that scan.</h1>
+  <p class="hero-sub">Professional desktop tool for AAMVA driver's licence barcodes, Code 128, and ICAO 9303 MRZ — TD1, TD2, and TD3 passport formats.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://github.com/muyaallan/PDF417Studio/releases/latest/download/PDF417Studio.exe">↓ &nbsp;Download for Windows</a>
+    <a class="btn-secondary" href="https://github.com/muyaallan/PDF417Studio">View on GitHub</a>
+  </div>
+  <div class="barcode-preview">
+    <div class="barcode-topbar">
+      <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+      <div class="barcode-title">PDF417 Studio — Information Tab</div>
+    </div>
+    <div class="barcode-strips" id="barcodeStrips"></div>
+    <div class="barcode-data">@  ANSI 636025010102DL00410278DLDAQ04434533  DCSADIELL  DBCSADA  DBB19821215  DBC1  DBD20241227  DBA20321215  DAG7320 FORD ST  DAIMISSION  DAJPA  DAK78572&nbsp;&nbsp;&nbsp;&nbsp;  DAU601  DAYHAZ  DABM  DCF09320461123217418426</div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="eyebrow">What's inside</div>
+    <h2 class="section-title">Everything you need.<br/>Nothing you don't.</h2>
+    <p class="section-desc">Every output is byte-compatible with real scanner hardware.</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(79,142,247,.12)">📋</div>
+        <h3>AAMVA 2016 Encoder</h3>
+        <p>Correct wire format reverse-engineered from real scanner output. Header offset, subfile length, element order all match production cards.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(167,139,250,.12)">🪪</div>
+        <h3>MRZ Generator — TD1 / TD2 / TD3</h3>
+        <p>Full ICAO 9303 pipeline with check digit calculation, AAMVA transliteration, chronology enforcement, and injectable policy validators.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(124,92,252,.12)">🔍</div>
+        <h3>Built-in Scanner</h3>
+        <p>Paste raw barcode text. Every AAMVA tag decoded with its field name. One click to send all fields back to the form.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(74,222,128,.1)">✓</div>
+        <h3>AAMVA Compliance Check</h3>
+        <p>Physical size validated against AAMVA limits (75.565 × 38.1 mm). X-dimension enforced 6.6–15 mils. Real-time readout after every generation.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(251,191,36,.1)">⚡</div>
+        <h3>Code 128 Generator</h3>
+        <p>Configurable bar width, bar height, and DPI. Exported as PNG or PDF.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(79,142,247,.12)">🗺️</div>
+        <h3>State IIN + Subfile Length</h3>
+        <p>All 52 US states/territories. Select a state and the IIN and subfile length auto-fill from known AAMVA values.</p>
+      </div>
+    </div>
+
+    <!-- Tabs demo -->
+    <div class="tabs-demo" style="margin-top:48px">
+      <div class="tab-bar">
+        <div class="tab-item active">Information</div>
+        <div class="tab-item">PDF417</div>
+        <div class="tab-item">Code 128</div>
+        <div class="tab-item">🔍 Scanner</div>
+        <div class="tab-item">🪪 MRZ</div>
+      </div>
+      <div class="tab-content">
+        <div><span class="t-muted">IIN (State) </span><span class="t-accent">636025  —  PA</span><span class="t-muted">  &nbsp;&nbsp;Ver </span><span class="t-green">01</span><span class="t-muted">  &nbsp;&nbsp;Jur </span><span class="t-green">01</span><span class="t-muted">  &nbsp;&nbsp;Subfile Len </span><span class="t-yellow">0278</span><span class="t-muted">  &nbsp;&nbsp;First Tag </span><span class="t-purple">DBC</span></div>
+        <div><span class="t-muted">First </span><span class="t-green">SADA</span><span class="t-muted">  &nbsp;Middle </span><span class="t-green"></span><span class="t-muted">  &nbsp;Last </span><span class="t-green">ADIELL</span></div>
+        <div><span class="t-muted">License Num </span><span class="t-accent">04434533</span><span class="t-muted">  &nbsp;Sex </span><span class="t-green">1 – M</span><span class="t-muted">  &nbsp;Class </span><span class="t-green">C</span></div>
+        <div><span class="t-muted">Birth </span><span class="t-yellow">19821215</span><span class="t-muted">  &nbsp;Exp </span><span class="t-yellow">20321215</span><span class="t-muted">  &nbsp;Issue </span><span class="t-yellow">20241227</span></div>
+        <div><span class="t-muted">Address </span><span class="t-green">7320 FORD ST</span><span class="t-muted">  City </span><span class="t-green">MISSION</span><span class="t-muted">  State </span><span class="t-accent">PA</span><span class="t-muted">  ZIP </span><span class="t-green">78572</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="usage">
+  <div class="container">
+    <div class="eyebrow">How it works</div>
+    <h2 class="section-title">From fields to barcode<br/>in four steps.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Select your state</h3>
+        <p>Choose any US state — IIN and Subfile Length auto-fill from the built-in AAMVA database. Or enter a custom IIN manually.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Fill the form</h3>
+        <p>Enter name, licence number, dates, address and physical attributes. Sex, State, and First Tag are all dropdowns.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Generate AAMVA</h3>
+        <p>Click Generate — the compliant AAMVA payload appears instantly. Switch to the PDF417 tab and click AAMVA Preset for safe defaults.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Export</h3>
+        <p>Save as PNG with embedded DPI metadata, or export a single-page PDF matching the on-screen preview exactly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IIN REFERENCE -->
+<section id="iin">
+  <div class="container">
+    <div class="eyebrow">AAMVA IIN Reference</div>
+    <h2 class="section-title">All 52 states &amp; territories.<br/>Built into the app.</h2>
+    <p class="section-desc">Select a state in the app and the IIN and Subfile Length auto-fill instantly.</p>
+    <input id="iin-search" type="text" placeholder="Search state or IIN…" oninput="filterIIN(this.value)"/>
+    <div class="iin-grid" id="iinGrid"></div>
+  </div>
+</section>
+
+<!-- MRZ -->
+<section id="mrz">
+  <div class="container">
+    <div class="eyebrow">Machine Readable Zone</div>
+    <h2 class="section-title">Three MRZ formats.<br/>One pipeline.</h2>
+    <p class="section-desc">TD1 ID cards, TD2 official documents, TD3 passports — all generated with the same ICAO 9303 compliant engine.</p>
+    <div class="mrz-cards">
+      <div class="mrz-card">
+        <div class="mrz-card-header">
+          <h3>TD1 — ID Card</h3>
+          <span class="mrz-badge td1">3 × 30</span>
+        </div>
+        <p>Driver's licences and national ID cards. Doc types: I, ID, A, C. Optional Data 1 (15 chars) + Optional Data 2 (11 chars).</p>
+        <div class="mrz-output">IDUSAF2475561&lt;9XYZ12345&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>8212155M3212150USA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;7<br>COLANGELO&lt;&lt;FORD&lt;C&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+      </div>
+      <div class="mrz-card">
+        <div class="mrz-card-header">
+          <h3>TD2 — Official ID</h3>
+          <span class="mrz-badge td2">2 × 36</span>
+        </div>
+        <p>Official and diplomatic identity documents. Doc types: A, C, I. Optional Data up to 7 chars. ICAO 9303 Part 6.</p>
+        <div class="mrz-output">AGBRKENSIGHTON&lt;&lt;RUPERT&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>9560578323GBR9009051M2806181&lt;&lt;&lt;&lt;&lt;&lt;5</div>
+      </div>
+      <div class="mrz-card">
+        <div class="mrz-card-header">
+          <h3>TD3 — Passport</h3>
+          <span class="mrz-badge td3">2 × 44</span>
+        </div>
+        <p>All passport types: P, PO, PD, PS, PE, PM. Optional Data up to 14 chars (personal number). ICAO 9303 Part 4.</p>
+        <div class="mrz-output">P&lt;USACOLANGELO&lt;&lt;FORD&lt;C&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>F24755613USA8212155M3212150&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;6</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCANNER -->
+<section id="scanner">
+  <div class="container">
+    <div class="eyebrow">Scanner Tab</div>
+    <h2 class="section-title">Read barcodes back.</h2>
+    <p class="section-desc">Plug in a USB wedge scanner, swipe a card, and PDF417 Studio parses every AAMVA field automatically.</p>
+    <div class="scanner-split">
+      <div class="scanner-terminal">
+        <div class="term-bar">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span style="font-size:.72rem;color:var(--muted);margin-left:8px">Scanner — Parsed Fields</span>
+        </div>
+        <div class="term-body">
+          <div><span class="t-muted">TAG &nbsp; FIELD &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VALUE</span></div>
+          <div><span style="color:var(--accent)">DAQ &nbsp; </span><span class="t-muted">License Number &nbsp;&nbsp;&nbsp; </span><span class="t-green">04434533</span></div>
+          <div><span style="color:var(--accent)">DCS &nbsp; </span><span class="t-muted">Last Name &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="t-green">ADIELL</span></div>
+          <div><span style="color:var(--accent)">DBC &nbsp; </span><span class="t-muted">First Name &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="t-green">SADA</span></div>
+          <div><span style="color:var(--accent)">DBB &nbsp; </span><span class="t-muted">Date of Birth &nbsp;&nbsp;&nbsp;&nbsp; </span><span class="t-green">19821215</span></div>
+          <div><span style="color:var(--accent)">DAJ &nbsp; </span><span class="t-muted">State &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="t-yellow">PA</span></div>
+          <div><span style="color:var(--accent)">DAU &nbsp; </span><span class="t-muted">Height &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="t-green">601</span></div>
+          <div><span style="color:var(--accent)">DCF &nbsp; </span><span class="t-muted">Doc Discriminator &nbsp; </span><span style="color:#a78bfa">09320461123217418426</span></div>
+          <div style="margin-top:8px"><span class="t-green">✓ 9 fields · IIN=636025 (PA) · ⇢ sent to Info tab</span></div>
+        </div>
+      </div>
+      <div>
+        <ul class="scanner-list">
+          <li>Paste raw barcode text or load from the Output tab in one click</li>
+          <li>Every AAMVA tag decoded with its human-readable field name</li>
+          <li>IIN resolved to issuing state automatically</li>
+          <li>Summary card — name, DOB, sex, licence number, address, expiry</li>
+          <li>Send to Information Tab pre-fills all form fields instantly</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE -->
+<section id="compliance" style="background:var(--surface)">
+  <div class="container">
+    <div class="eyebrow">Standards</div>
+    <h2 class="section-title">AAMVA 2016 compliant<br/>out of the box.</h2>
+    <div class="compliance-grid">
+      <div class="comp-item"><div class="comp-check">✓</div><span>Correct <code style="font-family:var(--mono);color:var(--accent)">@\nANSI</code> wire format matching real scanner output</span></div>
+      <div class="comp-item"><div class="comp-check">✓</div><span>X-dimension enforced 6.6–15 mils (AAMVA §2.7)</span></div>
+      <div class="comp-item"><div class="comp-check">✓</div><span>Maximum barcode size 75.565 × 38.1 mm validated</span></div>
+      <div class="comp-item"><div class="comp-check">✓</div><span>Row height ratio ≥ 3× X-dimension enforced</span></div>
+      <div class="comp-item"><div class="comp-check">✓</div><span>Quiet zone ≥ 2X recommended minimum</span></div>
+      <div class="comp-item"><div class="comp-check">✓</div><span>DCF discriminator always last, no trailing newline</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOADS -->
+<section id="downloads" style="background:var(--surface)">
+  <div class="container">
+    <div class="eyebrow">Design Assets</div>
+    <h2 class="section-title">PSD Files &amp; Templates.<br/>Free to download.</h2>
+    <p class="section-desc">Card templates, backgrounds, and design assets — ready for Photoshop. All files hosted on Google Drive, no account required to browse.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:48px">
+
+      <a href="https://drive.google.com/drive/folders/1eZCoztfcGjwAskhKmlwDAuTTeC0LDSuo"
+         target="_blank" rel="noopener"
+         style="text-decoration:none">
+        <div class="feat-card" style="height:100%;cursor:pointer">
+          <div class="feat-icon" style="background:rgba(79,142,247,.12);font-size:1.6rem">📁</div>
+          <h3 style="margin-bottom:6px">PSD Files Folder</h3>
+          <p>All card templates, backgrounds, and design assets. Open in Google Drive to browse and download individual files or the full folder.</p>
+          <div style="margin-top:16px;display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:.85rem;font-family:var(--mono)">Open in Drive →</div>
+        </div>
+      </a>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(74,222,128,.1);font-size:1.6rem">🎨</div>
+        <h3 style="margin-bottom:6px">What's included</h3>
+        <p style="margin-bottom:12px">PSD card templates with editable layers for name, photo, barcode, MRZ strip, and background artwork.</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+          <li style="color:var(--muted);font-size:.88rem;display:flex;gap:8px"><span style="color:#4ade80">✓</span> Driver's licence templates</li>
+          <li style="color:var(--muted);font-size:.88rem;display:flex;gap:8px"><span style="color:#4ade80">✓</span> Card background layers</li>
+          <li style="color:var(--muted);font-size:.88rem;display:flex;gap:8px"><span style="color:#4ade80">✓</span> MRZ zone artwork</li>
+          <li style="color:var(--muted);font-size:.88rem;display:flex;gap:8px"><span style="color:#4ade80">✓</span> Barcode placement guides</li>
+        </ul>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(124,92,252,.12);font-size:1.6rem">⬇</div>
+        <h3 style="margin-bottom:6px">How to download</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">1</span>
+            <span style="color:var(--muted);font-size:.88rem">Click <strong style="color:var(--text)">Open in Drive</strong> on the card to the left</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">2</span>
+            <span style="color:var(--muted);font-size:.88rem">Sign in to your Google account if prompted</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">3</span>
+            <span style="color:var(--muted);font-size:.88rem">Right-click any file → <strong style="color:var(--text)">Download</strong></span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">4</span>
+            <span style="color:var(--muted);font-size:.88rem">Or click <strong style="color:var(--text)">⋮ → Download all</strong> for the full folder as ZIP</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:32px;text-align:center">
+      <a class="btn-primary" href="https://drive.google.com/drive/folders/1eZCoztfcGjwAskhKmlwDAuTTeC0LDSuo" target="_blank" rel="noopener">
+        📁 &nbsp;Open PSD Files on Google Drive
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section id="security">
+  <div class="container">
+    <div class="eyebrow">Legal & Security</div>
+    <h2 class="section-title">Built for legitimate use.<br/>Nothing else.</h2>
+    <p class="section-desc">PDF417Studio is designed exclusively for lawful, authorized professional workflows. All data is processed locally — nothing is transmitted externally.</p>
+
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:12px;padding:18px 24px;margin-top:40px;display:flex;gap:14px;align-items:flex-start">
+      <span style="font-size:1.4rem;flex-shrink:0">⚠️</span>
+      <p style="color:#856404;font-size:.95rem;line-height:1.6"><strong>This software must not be used for fraud, identity deception, document forgery, or any unlawful purpose.</strong> Misuse may be subject to criminal prosecution under applicable local and international law.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-top:32px">
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(74,222,128,.1)">🔒</div>
+        <h3>Local Processing Only</h3>
+        <p>All data is processed entirely on your device. PDF417Studio does not transmit user data, telemetry, or generated content to any external server.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(79,142,247,.12)">✅</div>
+        <h3>Intended Use</h3>
+        <p>Legitimate business workflows, educational instruction, systems testing, inventory management, logistics, document management, and professional research.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(251,191,36,.1)">📜</div>
+        <h3>Terms of Use</h3>
+        <p>By using this software you agree that it will not be used for illegal, fraudulent, or malicious activities. Redistribution and reverse engineering are prohibited.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(124,92,252,.12)">©️</div>
+        <h3>Proprietary License</h3>
+        <p>PDF417Studio is proprietary software. All rights reserved. Not open source. Redistribution or commercial sub-licensing requires explicit written authorization.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(74,222,128,.1)">🛡️</div>
+        <h3>User Responsibility</h3>
+        <p>Users retain sole responsibility for securing generated files and ensuring all operations comply with local, national, and international privacy laws.</p>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(79,142,247,.12)">⚖️</div>
+        <h3>Governing Law</h3>
+        <p>This agreement is governed by the laws of Kenya. Downloading or running the software constitutes full acceptance of the Terms of Use.</p>
+      </div>
+
+    </div>
+
+    <div style="margin-top:32px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center">
+      <p style="color:var(--muted);font-size:.9rem;line-height:1.8">
+        PDF417Studio is provided <strong style="color:var(--text)">"AS IS"</strong> without warranties of any kind.<br/>
+        Copyright © 2026 PDF417Studio. All Rights Reserved.  ·  Release 1.0.0  ·  Governed by the laws of Kenya.<br/>
+        <span style="font-family:var(--mono);font-size:.78rem;color:var(--accent)">™ "PDF417Studio" is a trademark of PDF417Studio.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD APP -->
+<section id="download">
+  <div class="container">
+    <div class="cta-box">
+      <h2>Ready to generate?</h2>
+      <p>Free download. No install wizard. Just run the .exe and start encoding.</p>
+      <a class="btn-primary" style="display:inline-flex;margin:0 auto" href="https://github.com/sadaadiel-gif/PDF417Studio/releases/tag/v1.0">↓ &nbsp;Download PDF417 Studio.exe</a>
+      <div class="dl-meta">
+        <span>🪟 Windows 10 / 11</span>
+        <span>📦 Single .exe — no installer</span>
+        <span>🔓 Free &amp; open source</span>
+        <span>🐍 Python 3.10+</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2026 PDF417 Studio · <a href=" https://github.com/sadaadiel-gif">@sadaadiel-gif</a></span>
+  <span>Built with Python · tkinter · pdf417gen · ReportLab · ICAO 9303</span>
+  <a href="https://github.com/sadaadiel-gif/PDF417Studio">GitHub →</a>
+</footer>
+
+<script>
+// Barcode strips
+const container = document.getElementById('barcodeStrips');
+const pattern = [3,1,1,2,1,3,2,1,1,3,1,1,2,2,1,2,3,1,1,2,1,1,3,2,1,1,2,1,3,1,2,3,1,1,2,1,1,3,1,2,2,1,3,1,1,2,1,1,3,2,1,3,1,1,2,1,3,1,2,1,1,3,2,1,1,2,1,3,1,1,2,2,1,1,3,2,1,1,2,1,1,3,1,2,3,1,1,2,1,1];
+let isBlack = true;
+pattern.forEach((w,i)=>{
+  const el = document.createElement('div');
+  el.className='strip';
+  el.style.width=(w*2.8)+'px';
+  el.style.background=isBlack?'var(--text)':'transparent';
+  el.style.animationDelay=(i*0.04)+'s';
+  container.appendChild(el);
+  isBlack=!isBlack;
+});
+
+// IIN table
+const IIN_DATA = [
+  ["Virginia","VA","636000"],["New York","NY","636001"],["Massachusetts","MA","636002"],
+  ["Maryland","MD","636003"],["North Carolina","NC","636004"],["South Carolina","SC","636005"],
+  ["Connecticut","CT","636006"],["Louisiana","LA","636007"],["Montana","MT","636008"],
+  ["New Mexico","NM","636009"],["Florida","FL","636010"],["Delaware","DE","636011"],
+  ["California","CA","636014"],["Texas","TX","636015"],["Iowa","IA","636018"],
+  ["Colorado","CO","636020"],["Arkansas","AR","636021"],["Kansas","KS","636022"],
+  ["Ohio","OH","636023"],["Vermont","VT","636024"],["Pennsylvania","PA","636025"],
+  ["Arizona","AZ","636026"],["Oregon","OR","636029"],["Missouri","MO","636030"],
+  ["Wisconsin","WI","636031"],["Michigan","MI","636032"],["Alabama","AL","636033"],
+  ["North Dakota","ND","636034"],["Illinois","IL","636035"],["New Jersey","NJ","636036"],
+  ["Indiana","IN","636037"],["Minnesota","MN","636038"],["New Hampshire","NH","636039"],
+  ["Utah","UT","636040"],["Maine","ME","636041"],["South Dakota","SD","636042"],
+  ["District of Columbia","DC","636043"],["Washington","WA","636045"],["Kentucky","KY","636046"],
+  ["Hawaii","HI","636047"],["Nevada","NV","636049"],["Idaho","ID","636050"],
+  ["Mississippi","MS","636051"],["Rhode Island","RI","636052"],["Tennessee","TN","636053"],
+  ["Nebraska","NE","636054"],["Georgia","GA","636055"],["Oklahoma","OK","636058"],
+  ["Alaska","AK","636059"],["Wyoming","WY","636060"],["West Virginia","WV","636061"],
+  ["U.S. Virgin Islands","VI","636062"]
+];
+
+function renderIIN(data){
+  const grid = document.getElementById('iinGrid');
+  grid.innerHTML = data.map(([name,abbr,iin])=>
+    `<div class="iin-row"><span class="state">${name} (${abbr})</span><span class="iin">${iin}</span></div>`
+  ).join('');
+}
+function filterIIN(q){
+  q=q.toLowerCase();
+  renderIIN(IIN_DATA.filter(([name,abbr,iin])=>
+    name.toLowerCase().includes(q)||abbr.toLowerCase().includes(q)||iin.includes(q)
+  ));
+}
+renderIIN(IIN_DATA);
+</script>
+</body>
+</html>
