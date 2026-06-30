@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-
 @dataclass
 class AAMVAData:
     issuer_id:      str = "636000"
@@ -49,19 +48,16 @@ class AAMVABuilder:
     def build(self, data: AAMVAData) -> str:
         body = self._build_body(data)
         header = self._build_header(data, body)
-        # The complete record terminator: CR LF EOT
-        terminator = "\r\n\x04"
-        return f"@\n{header}\n{body}{terminator}"
+        # The required AAMVA record terminator: CR LF EOT
+        return f"@\n{header}\n{body}\r\n\x04"
 
     def build_bytes(self, data: AAMVAData) -> bytes:
-        """Return the complete AAMVA data as UTF‑8 encoded bytes."""
         return self.build(data).encode("utf-8")
 
     def _build_header(self, data: AAMVAData, body: str) -> str:
         daq_element = f"DAQ{data.license_number.strip()}"
         prefix_fixed_len = 5 + 6 + 2 + 2 + 4 + 4 + 4 + 2
         offset = prefix_fixed_len + len(daq_element) + 1
-
         return (
             f"ANSI "
             f"{data.issuer_id}"
