@@ -288,19 +288,26 @@ class TD3Serializer:
         exp_chk = self.calc.calculate(expiry)
         opt_chk = self.calc.calculate(optional)
 
-        line2_prefix = (
+        # Composite check digit – ICAO 9303 excludes nationality and gender
+        composite_str = (
+            f"{doc_num}{doc_chk}"
+            f"{dob}{dob_chk}"
+            f"{expiry}{exp_chk}"
+            f"{optional}{opt_chk}"
+        )
+        comp_chk = self.calc.calculate(composite_str)
+
+        name_field = f"{doc.surname}<<{doc.given_names}".ljust(39, "<")[:39]
+        line1 = f"{doc_type}{country}{name_field}"
+        line2 = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
             f"{gender}"
             f"{expiry}{exp_chk}"
             f"{optional}{opt_chk}"
+            f"{comp_chk}"
         )
-        comp_chk = self.calc.calculate(line2_prefix)
-
-        name_field = f"{doc.surname}<<{doc.given_names}".ljust(39, "<")[:39]
-        line1 = f"{doc_type}{country}{name_field}"
-        line2 = line2_prefix + comp_chk
 
         if len(line1) != 44:
             raise RuntimeError(f"TD3 line1 length is {len(line1)}, expected 44.")
@@ -410,19 +417,26 @@ class TD2Serializer:
         exp_chk = self.calc.calculate(expiry)
         opt_chk = self.calc.calculate(optional)
 
-        line2_prefix = (
+        # Composite check digit – ICAO excludes nationality and gender
+        composite_str = (
+            f"{doc_num}{doc_chk}"
+            f"{dob}{dob_chk}"
+            f"{expiry}{exp_chk}"
+            f"{optional}{opt_chk}"
+        )
+        comp_chk = self.calc.calculate(composite_str)
+
+        name_field = f"{doc.surname}<<{doc.given_names}".ljust(31, "<")[:31]
+        line1 = f"{doc_type}{country}{name_field}"
+        line2 = (
             f"{doc_num}{doc_chk}"
             f"{nationality}"
             f"{dob}{dob_chk}"
             f"{gender}"
             f"{expiry}{exp_chk}"
             f"{optional}{opt_chk}"
+            f"{comp_chk}"
         )
-        comp_chk = self.calc.calculate(line2_prefix)
-
-        name_field = f"{doc.surname}<<{doc.given_names}".ljust(31, "<")[:31]
-        line1 = f"{doc_type}{country}{name_field}"
-        line2 = line2_prefix + comp_chk
 
         if len(line1) != 36:
             raise RuntimeError(f"TD2 line1 length is {len(line1)}, expected 36.")
