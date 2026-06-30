@@ -2,13 +2,18 @@ from pdf417gen import encode as pdf417_encode, render_image as pdf417_render
 
 
 def generate_barcode(
-    text:    str,
+    data,          # str or bytes
     columns: int = 5,
     scale:   int = 3,
     ratio:   int = 3,
     padding: int = 2,
     rows:    int = 0,
 ):
+    if isinstance(data, bytes):
+        text = data.decode('utf-8')
+    else:
+        text = data
+
     codes = pdf417_encode(text, columns=columns)
 
     if rows > 0 and len(codes) != rows:
