@@ -791,6 +791,10 @@ class PDF417Studio:
     def generate_aamva(self):
         data = self._collect_fields()
         text = AAMVABuilder().build(data)
+        # Ensure the data ends with the required control characters for AAMVA PDF417
+        # The standard expects the data to end with Carriage Return, Line Feed, and End of Transmission (EOT)
+        if not text.endswith('\x04'):
+            text += '\r\n\x04'
         for box in (self.output, self.output2):
             box.delete("1.0", "end")
             box.insert("1.0", text)
@@ -804,6 +808,9 @@ class PDF417Studio:
         if not data:
             messagebox.showwarning("No data", "Generate or paste AAMVA data first.")
             return
+        # Ensure the data ends with the proper control bytes
+        if not data.endswith('\x04'):
+            data += '\r\n\x04'
         try:
             dpi       = int(self.dpi_var.get())
             x_mils    = self.x_mils.get()
@@ -1506,3 +1513,4 @@ class PDF417Studio:
         if len(doc_type) == 1:
             return doc_type + "<"
         return doc_type
+

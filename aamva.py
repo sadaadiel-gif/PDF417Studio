@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 
 @dataclass
 class AAMVAData:
-
     issuer_id:      str = "636000"
     version:        str = "01"
     jurisdiction:   str = "01"
@@ -47,16 +46,23 @@ class AAMVAData:
 
 
 class AAMVABuilder:
-
     def build(self, data: AAMVAData) -> str:
-        body_lines = self._body_lines(data)
+        body = self._build_body(data)
+        header = self._build_header(data, body)
+        # The complete record terminator: CR LF EOT
+        terminator = "\r\n\x04"
+        return f"@\n{header}\n{body}{terminator}"
 
+    def build_bytes(self, data: AAMVAData) -> bytes:
+        """Return the complete AAMVA data as UTF‑8 encoded bytes."""
+        return self.build(data).encode("utf-8")
+
+    def _build_header(self, data: AAMVAData, body: str) -> str:
         daq_element = f"DAQ{data.license_number.strip()}"
-
         prefix_fixed_len = 5 + 6 + 2 + 2 + 4 + 4 + 4 + 2
         offset = prefix_fixed_len + len(daq_element) + 1
 
-        header_line = (
+        return (
             f"ANSI "
             f"{data.issuer_id}"
             f"{data.version}"
@@ -69,13 +75,9 @@ class AAMVABuilder:
             f"{daq_element}"
         )
 
-        body = "\n".join(body_lines)
-
-        return f"@\n{header_line}\n{body}"
-
-
-    def _body_lines(self, data: AAMVAData) -> list[str]:
-        s = lambda val: val.strip() if val else ""
+    def _build_body(self, data: AAMVAData) -> str:
+        def s(val: str) -> str:
+            return val.strip() if val else ""
 
         zip9 = s(data.zip_code).ljust(9)[:9]
 
@@ -113,7 +115,7 @@ class AAMVABuilder:
             if omit_blank and not val:
                 continue
             lines.append(f"{tag}{val}")
-        return lines
+        return "\n".join(lines)
 
 
 def build_from_dict(fields: dict) -> str:
